@@ -4,4 +4,8 @@
 .Ruserdata
 /data/
 *.zip
+/renv/
+.Rprofile
+*.Rproj
 
+/.quarto/
