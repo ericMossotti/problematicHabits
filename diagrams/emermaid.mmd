@@ -1,0 +1,51 @@
+---
+config:
+  theme: dark
+---
+erDiagram
+    PARTICIPANT ||--o{ DEMOGRAPHICS : has
+    PARTICIPANT ||--o{ PHYSICAL_MEASURES : has
+    PARTICIPANT ||--o{ FITNESSGRAM : has
+    PARTICIPANT ||--o{ BIA : has
+    PARTICIPANT ||--o{ BEHAVIORAL_MEASURES : has
+    PARTICIPANT {
+        string id
+    }
+    DEMOGRAPHICS {
+        string season
+        float age
+        int sex
+    }
+    PHYSICAL_MEASURES {
+        string season
+        float bmi
+        float height
+        float weight
+        int waist_circumference
+        int blood_pressure
+        int heart_rate
+    }
+    FITNESSGRAM {
+        string season
+        int curl_ups
+        float grip_strength
+        int push_ups
+        float sit_reach
+        int trunk_lift
+        categorical fitness_zones
+    }
+    BIA {
+        string season
+        float body_fat
+        float muscle_mass
+        float bone_mass
+        categorical activity_level
+        categorical frame_size
+    }
+    BEHAVIORAL_MEASURES {
+        string season
+        float activity_score
+        int internet_usage
+        int sleep_score
+        int internet_addiction_score
+    }

@@ -1,0 +1,12 @@
+---
+
+---
+
+
+::: column-body-outset
+```{mermaid}
+%%| label: fig-childMermaid
+%%| fig-cap: "child"
+%%| file: ../diagrams/emermaid.mmd
+```
+:::
