@@ -6,6 +6,8 @@ authors:
     roles: data analysis
     corresponding: true
 
+
+
 bibliography: bibliography/references.bib
 citation-location: margin
 citations-hover: true
@@ -17,33 +19,131 @@ code-fold: true
 lightbox: auto
 ---
 
+## Rationale and Initial Thoughts
+
+The grounds for analyses in this case is the problematic behavior as it pertains to the subjects' experience and their parents' via questionnaires, physical fitness tests, worn instrument measurements and demographics. The resulting data is to be processed and connections drawn.
+
+There are quite a few variables to consider here. The largest amount of data was collected in real time. This was recorded by a device that could measure acceleration in 3D space, ambient light, time, and the quarter of the year while the participant went about their lives. Many health issues could stem from a lack of exercise. It may follow that the more someone is actively using the internet, the less likely they are to meet daily activity recommendations.
+
+Some issues is that it is uncertain where this feat of data collection took place. Perhaps, this was for the sake of privacy? The exact dates are not given for the real-time data either. So, we have to go by the quarter of the year and or season in that respect. Not sure if seasonal information is consequential to anything.
+
+The goal of the models is to, ultimately, make progress in the field of childhood to adolescent psychology. Progress, in this case, is defined by accurately predicting risks of undesirable outcomes based on a young persons' daily activities.
+
+Nowadays, life is centered around the internet. At the same time, our biology has not undergone any systemic changes. First hand experience certainly tells me that that high levels of internet activity can have a negative impact on the mind.
+
+Is the quantity of internet activity itself truly determinant of negative outcome?
+
+### Output Formatters
+
+#### Tables
+
 ```{r}
-#| fig-cap: Simple demo R plot 
-#| lightbox:
-#|   group: r-graph
-#|   description: This is 1 to 10 plot
-#| include: false
-#| eval: false
-plot(1:10, rnorm(10))
+#| label: "r_table_theming()"
+#| code-summary: "x"
+# https://emilhvitfeldt.github.io/paletteer/
+
+library(gt)
+library(purrr)
+library(tibble)
+library(reticulate)
+
+r_table_theming <- function(rDataFrame,
+                            title,
+                            subtitle,
+                            footnotes_df,
+                            source_note) {
+  r_table <- gt(rDataFrame) |>
+    data_color(palette = "ggsci::legacy_tron",
+               columns = footnotes_df$locations[[1]],
+               target_columns = everything()) |>
+    tab_header(title = title, subtitle = subtitle)
+  
+  r_table <- r_table |>
+      tab_options(
+        heading.background.color = '#222',
+        column_labels.background.color = '#333',
+        #table.background.color = '#222',
+        footnotes.background.color = '#222',
+        source_notes.background.color = '#222'
+        )
+    
+    r_table <- r_table |>
+      tab_source_note(source_note = source_note)
+
+  # Footnotes are added to the accumulator, building up to the final result
+  r_table <- seq_len(nrow(footnotes_df)) |>
+    reduce(\(acc, i) {
+      tab_footnote(
+        acc,
+        footnote = footnotes_df$notes[[i]],
+        location = cells_column_labels(columns = footnotes_df$locations[[i]]),
+        placement = "auto"
+        )
+      }, .init = r_table)
+  
+  return(r_table)
+}
+
 ```
+
+#### Plots
+
+```{r}
+#| label: "ggplot_theming()"
+#| eval: true
+
+library(reticulate)
+library(ggplot2)
+
+ggplot_theming_flipped_axes <- function() {
+  theme_linedraw() +
+    theme(
+      plot.title = element_text(color = 'white'),
+      plot.background = element_rect(fill = '#222'),
+      panel.background = element_rect(fill = '#222'),
+      panel.grid.major.x = element_line(linetype = 'dashed'),
+      panel.grid.minor.x = element_line(linetype = "dotted"),
+      panel.grid.major.y = element_line(linetype = 'solid'),
+      panel.grid.minor.y = element_line(linetype = 'dotted'),
+      axis.title = element_text(color = 'gray100'),
+      axis.text = element_text(color = 'gray'))
+}
+
+ggplot_theming <- function() {
+  theme_linedraw() +
+    theme(
+      plot.title = element_text(color = 'white'),
+      plot.background = element_rect(fill = 'transparent'),
+      panel.background = element_rect(fill = 'transparent'),
+      panel.grid.major.x = element_line(linetype = 'solid'),
+      panel.grid.minor.x = element_line(linetype = "dotted"),
+      panel.grid.major.y = element_line(linetype = 'dashed'),
+      panel.grid.minor.y = element_line(linetype = 'dotted'),
+      axis.title = element_text(color = 'gray100'),
+      axis.text = element_text(color = 'gray'))
+  }
+```
+
+## Import/Extract
 
 ```{python}
 #| eval: false
-!kaggle competitions download -c child-mind-institute-problematic-internet-use 
+!kaggle competitions download -c child-mind-institute-problematic-internet-use
 ```
 
 ```{python}
 #| label: "mass import"
-#| 
+
 from zipfile import ZipFile
 import os
 import duckdb
 import pandas as pd
-from colorama import Fore, Style
 import re
 ```
 
 ```{python}
+#| label: "makeDir"
+#| code-summary: "Check if the directory, 'data', exists."
 try:
   os.mkdir('data')
 except FileExistsError:
@@ -51,6 +151,9 @@ except FileExistsError:
 ```
 
 ```{python}
+#| label: "unzipping"
+#| code-summary: "Extracts the files and lists files."
+
 zip_path = "child-mind-institute-problematic-internet-use.zip"
 
 if not os.path.exists('data/train.csv'):
@@ -69,7 +172,7 @@ else:
     )
 ```
 
-## Open Connection
+### Establish a Database Connection
 
 ```{python}
 conn = duckdb.connect(':memory:')
@@ -77,9 +180,9 @@ conn.sql(f"SET memory_limit = '24GB';")
 conn.sql(f"SET default_order = 'ASC';")
 ```
 
-## ENUM Data Types
+### New Data Types (Enums/Enumerations)
 
-I noticed that using ENUM data types significantly sped up many database operations. [@holanda_duckdb_2021]
+I noticed that using ENUM data types significantly sped up many database operations [@holanda_duckdb_2021].
 
 ```{python}
 #| label: "enum_series_to_dict"
@@ -102,7 +205,11 @@ enums = ['internet_hours_enum'
 siiSeries = pd.Series(data = ['0', '1', '2', '3'], dtype = str)
 ageSeries = pd.Series(data = range(5, 23), dtype = str)
 sexSeries = pd.Series(data = ['0', '1'], dtype = str)
-pciatSeasonSeries = pd.Series(data = ['Fall', 'Spring', 'Summer', 'Winter'], dtype = str)
+pciatSeasonSeries = pd.Series(data = ['Fall'
+                                      ,'Spring'
+                                      ,'Summer'
+                                      ,'Winter'], dtype = str)
+
 internetHrsSeries = pd.Series(data = ['0', '1', '2', '3'], dtype = str)
 quarterSeries = pd.Series(data = range(1, 5), dtype = str)
 weekdaySeries = pd.Series(data = range(1, 8), dtype = str)
@@ -146,16 +253,16 @@ enumDict = {
   }
 
 if len(enumDict) == len(enums):
-    print(f"drops and creates are same length")
+  print(f"drops and creates are same length")
 else:
   print(f"drops and creates are not the same length")
 ```
 
 ```{python}
-#| label: "try_create()"
-#| code-summary: ""
+#| label: "try_create_drop()"
+#| code-summary: "Can there be a modular approach to creating and dropping ENUM types?\n \tYes."
 
-def try_create(conn, type_str: str, enum_str: str) -> pd.Series:
+def try_create(conn,type_str: str, enum_str: str) -> pd.Series:
   """
   :::WHY(s):::
     Is there a modular approach to creating ENUM types in a database?
@@ -168,12 +275,6 @@ def try_create(conn, type_str: str, enum_str: str) -> pd.Series:
     return pd.Series(type_str, index = ['created'])
   except duckdb.duckdb.CatalogException:
     return pd.Series(type_str, index = ['already existed'])
-
-```
-
-```{python}
-#| label: "try_drop()"
-#| code-summary: "Can there be a modular approach to dropping ENUM types?\n \tYes."
 
 def try_drop(conn, type_str: str) -> pd.Series:
   """
@@ -210,38 +311,13 @@ createFrame = createFrame.sort_values(by = createFrame.columns.to_list()
 pd.concat([dropFrame, createFrame], axis = 1)
 ```
 
-```{python}
-trainCsvDf = pd.read_csv("data/train.csv")
-testCsvDf = pd.read_csv("data/test.csv")
-dictDf = pd.read_csv("data/data_dictionary.csv")
-```
+Not sure why the data had hyphens in the columns names, originally. These hyphens interfere with SQL query operations, so I have the mind to replace them with underscore characters. I'm not going to overwrite the original CSVs as I wish to maintain integrity and a clear trail of data processing steps. Also, having the original data to fall back on if need be, without re-downloading could be helpful.
 
-```{python}
-trainCsvDf.columns = trainCsvDf.columns.str.replace('-','_') 
-trainCsvDf.columns = trainCsvDf.columns.str.lower() 
-testCsvDf.columns = testCsvDf.columns.str.replace('-','_') 
-testCsvDf.columns = testCsvDf.columns.str.lower() 
-
-dictDf.Field = dictDf.Field.replace("-", "_", regex = True)
-
-csvDict = {
-  "TrainCsv": trainCsvDf
-  ,"TestCsv": testCsvDf
-  ,"DataDict": dictDf
-  }
-
-parquetDict = {
-  "ActigraphyTrain": 'data//series_train.parquet*/*/*'
-  ,"ActigraphyTest": 'data//series_test*/*/*'
-  }
-```
-
-## Setup Database Pipeline
+### Setup Database Pipeline
 
 ```{python}
 #| label: "setupPipeline"
 #| code-summary: "Does the extraction and initial transformation following download of compressed files."
-
 
 def setup_duckdb_pipeline(
   csvDict: dict, 
@@ -296,6 +372,29 @@ def write_datasets (
         print(f"Error writing dataset: {str(e)}")
         raise
 
+trainCsvDf = pd.read_csv("data/train.csv")
+testCsvDf = pd.read_csv("data/test.csv")
+
+dictDf = pd.read_csv("data/data_dictionary.csv")
+
+trainCsvDf.columns = trainCsvDf.columns.str.replace('-','_') 
+trainCsvDf.columns = trainCsvDf.columns.str.lower() 
+testCsvDf.columns = testCsvDf.columns.str.replace('-','_') 
+testCsvDf.columns = testCsvDf.columns.str.lower() 
+
+dictDf.Field = dictDf.Field.replace("-", "_", regex = True)
+
+csvDict = {
+  "TrainCsv": trainCsvDf
+  ,"TestCsv": testCsvDf
+  ,"DataDict": dictDf
+  }
+
+parquetDict = {
+  "ActigraphyTrain": 'data//series_train.parquet*/*/*'
+  ,"ActigraphyTest": 'data//series_test*/*/*'
+  }
+
 try:
   setup_duckdb_pipeline(csvDict, parquetDict, conn)
   conn.sql(f"CHECKPOINT;")
@@ -304,55 +403,11 @@ except:
   
 ```
 
-```{python}
-
-coltype_overview = conn.execute(f"""
-  SELECT 
-    column_name
-    ,data_type
-  FROM 
-    information_schema.columns
-  WHERE 
-    table_name = 'TrainCsv';""").df()
-
-# map the column names with data types
-col_dict = dict(zip(coltype_overview.column_name, coltype_overview.data_type))
-
-```
+### Feature Tables
 
 ```{python}
-
-regex_dict_train = {
-  "Demographic": r"^id|^sii|^basic\S+"
-  ,"Physical": r"^id|^sii|^physical\S+"
-  ,"FgVital": r"^id|^sii|^fitness_E\S+"
-  ,"FgChild": r"^id|^sii|^fgc\S+"
-  ,"Bia": r"^id|^sii|^bia\S+"
-  ,"Paqa": r"^id|^sii|^paq_a\S+"
-  ,"Pciat": r"^id|^sii|^pciat\S+"
-  ,"Sds": r"^id|^sii|^sds\S+"
-  ,"InternetUse": r"^id|^sii|^preint\S+"
-  }
-
-# There's no Pciat in the test set
-regex_dict_test = {
-  "Demographic_OfTest": r"^id|^basic\S+"
-  ,"Physical_OfTest": r"^id|^physical\S+"
-  ,"FgVital_OfTest": r"^id|^fitness_E\S+"
-  ,"FgChild_OfTest": r"^id|^fgc\S+"
-  ,"Bia_OfTest": r"^id|^bia\S+"
-  ,"Paqa_OfTest": r"^id|^paq_a\S+"
- # ,"Pciat_OfTest": r"^id|^pciat\S+" 
-  ,"Sds_OfTest": r"^id|^sds\S+"
-  ,"InternetUse_OfTest": r"^id|^preint\S+"
-  }
-```
-
-## Parameterizing Database Tables
-
-```{python}
-#| label: "filter_columns_by_regex()"
-
+#| label: "create_table_with_regex_columns()"
+#| warning: false
 
 import re
 
@@ -370,10 +425,6 @@ def filter_columns_by_regex(col_dict: dict, regex_pattern: str) -> dict:
     if re.search(regex_pattern, col)
     }
 
-```
-
-```{python}
-#| label: "create_table_with_regex_columns()"
 
 def create_table_with_regex_columns(
   conn: duckdb.duckdb
@@ -410,7 +461,46 @@ def create_table_with_regex_columns(
 
   conn.execute(regex_select_sql)
  
-# loop through the data structures to create tables for the train set
+# It'd be useful to get the data types for creating a new table of values
+coltype_overview = conn.execute(f"""
+  SELECT 
+    column_name
+    ,data_type
+  FROM 
+    information_schema.columns
+  WHERE 
+    table_name = 'TrainCsv';""").df()
+
+# Map the column names with data types
+col_dict = dict(zip(coltype_overview.column_name, coltype_overview.data_type))
+
+regex_dict_train = {
+  "Demographic": r"^id|^sii|^basic\S+"
+  ,"Physical": r"^id|^sii|^physical\S+"
+  ,"FgVital": r"^id|^sii|^fitness_E\S+"
+  ,"FgChild": r"^id|^sii|^fgc\S+"
+  ,"Bia": r"^id|^sii|^bia\S+"
+  ,"Paqa": r"^id|^sii|^paq_a\S+"
+  ,"Pciat": r"^id|^sii|^pciat\S+"
+  ,"Sds": r"^id|^sii|^sds\S+"
+  ,"InternetUse": r"^id|^sii|^preint\S+"
+  }
+
+# There's no Pciat in the test set
+regex_dict_test = {
+  "Demographic_OfTest": r"^id|^basic\S+"
+  ,"Physical_OfTest": r"^id|^physical\S+"
+  ,"FgVital_OfTest": r"^id|^fitness_E\S+"
+  ,"FgChild_OfTest": r"^id|^fgc\S+"
+  ,"Bia_OfTest": r"^id|^bia\S+"
+  ,"Paqa_OfTest": r"^id|^paq_a\S+"
+ # ,"Pciat_OfTest": r"^id|^pciat\S+" 
+  ,"Sds_OfTest": r"^id|^sds\S+"
+  ,"InternetUse_OfTest": r"^id|^preint\S+"
+  }
+ 
+
+# Loop through the data structures to create tables for the train set
 for new_table_name, regex_pattern in regex_dict_train.items():
   create_table_with_regex_columns(
     conn 
@@ -420,7 +510,7 @@ for new_table_name, regex_pattern in regex_dict_train.items():
     ,col_dict
     ) 
 
-# loop through the data structures to create tables for the test set
+# Loop through the data structures to create tables for the test set
 for new_table_name, regex_pattern in regex_dict_test.items():
   create_table_with_regex_columns(
     conn
@@ -433,7 +523,7 @@ for new_table_name, regex_pattern in regex_dict_test.items():
 ```
 
 ```{python}
-conn.sql(f"select * from ActigraphyTest limit 10;").df()
+conn.sql(f"SELECT * from ActigraphyTest LIMIT 10;").df()
 ```
 
 ```{python}
@@ -545,7 +635,19 @@ def quartiler (
 
 ```
 
-## Light
+### Data Model
+
+::: column-screen-inset
+```{mermaid}
+%%| label: fig-childMermaid
+%%| fig-cap: "child"
+%%| file: diagrams/emermaid.mmd
+```
+:::
+
+## Actigraphy, Physical, and Demographics
+
+cool [@zierle-ghosh_physiology_2024].
 
 ```{python}
 
@@ -689,7 +791,6 @@ riskyDictionary = {
 ```
 
 ```{python}
-
 riskyDf = pd.DataFrame(data = riskyDictionary)
 ```
 
@@ -767,8 +868,7 @@ FROM RiskCategorySummary;
 ```
 
 ```{python}
-
-riskdf = conn.execute(f"""
+pydf = conn.execute(f"""
 SELECT 
   risk_category
   ,AVG(min_q1) AS qLight
@@ -776,114 +876,52 @@ FROM
   DiseaseRiskDemographic
 GROUP BY 
   risk_category;""").df()
-  
+
 ```
 
 ```{r}
-#| eval: false
-library(reticulate)
-library(ggplot2)
-
-ggplot(data = py$riskdf, 
-       aes(x = risk_category, y = qLight)) +
-  geom_col(fill = 'skyblue') +
-  labs(title='Risk Categories', 
-       x='Category', y='Light Exposure')  +
-  coord_flip() +
-  ggplot2::theme(
-    plot.background = element_rect(fill = "black"),
-    panel.grid = element_line(linetype = 'dotted'),
-    panel.grid.major.x = element_line(linetype = 'dashed'),
-    panel.background = element_rect(fill = 'black'),
-    text = element_text(color = 'yellow'),
-    axis.text = element_text(color = 'gray'))
-
+r_df <- py$pydf
 ```
 
-```{python}
-from sql.ggplot import *
-from plotnine import *
-# for some reason, the imports above have to be in that order
-# this is the jupysql way of plotting, in part
+```{r}
+#| label: tbl-risk
 
-(
-   ggplot(
-    data = riskdf,
-    mapping = aes(x = 'risk_category', y = 'qLight')) 
- + geom_col(stat = "identity", fill = "skyblue") 
- + labs(title='Risk Categories', x='Category', y='Light Exposure') 
- + coord_flip() 
- + theme(
-    plot_background=element_rect(fill = "black"),
-    panel_grid=element_line(linetype='dotted'),
-    panel_grid_major_x=element_line(linetype='dashed'),
-    panel_background=element_rect(fill='black'),
-    text=element_text(color='white'))
-    ).show()
+notes_list =  list("The disease risk category.", "The average light exposure for Q1.")
+locations_list = list("risk_category", "qLight")
+
+# Create a table dataframe, or tibble, of footnotes
+footnotes_df <- tibble(notes = notes_list, locations = locations_list)
+
+rTable <- r_table_theming(rDataFrame = r_df,
+                          title = "Title",
+                          subtitle = NULL,
+                          footnotes_df,
+                          source_note = md("**source**: Kaggle"))
+
+rTable
+```
+
+```{r}
+#| label: "ggplot example"
+
+r_plot <- ggplot(data = r_df, 
+                 mapping = aes(x = risk_category, y = qLight)
+                 ) +
+  geom_col(fill = 'skyblue') +
+  labs(title = 'Risk Categories', 
+       x = 'Category', y = 'Light Exposure') +
+  coord_flip()
+
+r_plot + ggplot_theming_flipped_axes()
 ```
 
 ## Close Connection
 
 ```{python}
-#| eval: false
+#| eval: true
 try:
   conn.close()
   print(f"database connection closed")
 except:
   print(f"could not close the connection")
-```
-
-```{r}
-#| label: "r_table_theming()"
-#| code-summary: ""
-# https://emilhvitfeldt.github.io/paletteer/
-library(gt)
-library(purrr)
-
-r_table_theming <- function(rDataFrame, title, subtitle, footnotes_df, source_note) {
-  r_table <- gt(rDataFrame) |>
-    data_color(palette = "ggsci::legacy_tron",
-               columns = "risk_category",
-               target_columns = everything()) |>
-    tab_header(title = title, subtitle = subtitle)
-  
-  r_table <-r_table |>
-      tab_options(
-        heading.background.color = '#444',
-        column_labels.background.color = '#333',
-        #table.background.color = '#222',
-        footnotes.background.color = '#333',
-        source_notes.background.color = '#333'
-        ) |>
-    tab_source_note(source_note = source_note)
-
-  # Footnotes are added to the accumulator, building up to the final result
-  r_table <- seq_len(nrow(footnotes_df)) |>
-    reduce(\(acc, i) {
-      tab_footnote(
-        acc,
-        footnote = footnotes_df$notes[[i]],
-        location = cells_column_labels(columns = footnotes_df$locations[[i]]),
-        placement = "left"
-        )
-      }, .init = r_table)
-
-  return(r_table)
-}
-
-# Create a table dataframe of footnotes
-footnotes_df <- tibble(
-    notes = list("The disease risk category.", 
-                 "The average light exposure for Q1."),
-    locations = list("risk_category", 
-                     "qLight")
-    )
-
-riskTable <- r_table_theming(rDataFrame = py$riskdf,
-                             title = "Risk",
-                             subtitle = NULL,
-                             footnotes_df,
-                             source_note = md("**source**: Kaggle"))
-
-riskTable
 ```
