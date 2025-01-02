@@ -1,12 +1,14 @@
 ---
-
+author-meta: Eric Mossotti
+author: Eric Mossotti
+fig-responsive: true
+layout: full
 ---
 
-
-::: column-body-outset
+::: column-screen-inset
 ```{mermaid}
-%%| label: fig-childMermaid
-%%| fig-cap: "child"
+%%| label: fig-childMermaid1
+%%| fig-cap: "child1"
 %%| file: ../diagrams/emermaid.mmd
 ```
 :::

@@ -6,8 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Eric Mossotti">
 
-<title>Problematic Internet Habits in Children</title>
+<title>data-modeling</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -23,19 +24,48 @@ ul.task-list li input[type="checkbox"] {
 </style>
 
 
-<script src="site_libs/clipboard/clipboard.min.js"></script>
-<script src="site_libs/quarto-html/quarto.js"></script>
-<script src="site_libs/quarto-html/popper.min.js"></script>
-<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="site_libs/quarto-html/anchor.min.js"></script>
-<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-6561bbde787c299e21493071c8edc6ff.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-3a160f2ade416ef0c713e0baa62e0709.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="dark">
-<script src="site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
-<link href="site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
-<link href="site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-6561bbde787c299e21493071c8edc6ff.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-2f9a6d5fc519497b76989773b292b038.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
 <script type="application/json" class="js-hypothesis-config">
 {
   "theme": "clean",
@@ -48,333 +78,121 @@ ul.task-list li input[type="checkbox"] {
     document.body.classList.add('hypothesis-enabled');
   });
 </script>
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
-<meta name="citation_title" content="Problematic Internet Habits in Children">
-<meta name="citation_author" content="Eric Mossotti">
-<meta name="citation_language" content="en">
-<meta name="citation_reference" content="citation_title=Literate programming;,citation_author=Donald E. Knuth;,citation_publication_date=1984-05;,citation_cover_date=1984-05;,citation_year=1984;,citation_fulltext_html_url=https://doi.org/10.1093/comjnl/27.2.97;,citation_issue=2;,citation_doi=10.1093/comjnl/27.2.97;,citation_issn=0010-4620;,citation_volume=27;,citation_journal_title=Comput. J.;,citation_publisher=Oxford University Press, Inc.;">
 </head>
 
-<body>
+<body class="fullcontent">
 
-<header id="title-block-header" class="quarto-title-block default toc-left page-columns page-full">
-  <div class="quarto-title-banner page-columns page-full">
-    <div class="quarto-title column-body">
-      <h1 class="title">Problematic Internet Habits in Children</h1>
-          </div>
-
+<div id="quarto-search-results"></div>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+<!-- margin-sidebar -->
     
-    <div class="quarto-title-meta-container">
-      <div class="quarto-title-meta-column-start">
-            <div class="quarto-title-meta-author">
-          <div class="quarto-title-meta-heading">Author</div>
-          <div class="quarto-title-meta-heading">Affiliation</div>
-          
-                <div class="quarto-title-meta-contents">
-            <p class="author">Eric Mossotti </p>
+<!-- main -->
+<main class="content page-columns page-full" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Eric Mossotti </p>
           </div>
-                <div class="quarto-title-meta-contents">
-                    <p class="affiliation">
-                        None
-                      </p>
-                  </div>
-                    </div>
-        
-        <div class="quarto-title-meta">
-
-                      
-          
-                
-              </div>
-      </div>
-      <div class="quarto-title-meta-column-end quarto-other-formats-target">
-      </div>
-    </div>
-
-
-
-    <div class="quarto-other-links-text-target">
-    </div>  </div>
-</header><div id="quarto-content" class="page-columns page-rows-contents page-layout-article toc-left">
-<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
-  <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">Table of contents</h2>
-   
-  <ul>
-  <li><a href="#open-connection" id="toc-open-connection" class="nav-link active" data-scroll-target="#open-connection">Open Connection</a></li>
-  <li><a href="#enumerate" id="toc-enumerate" class="nav-link" data-scroll-target="#enumerate">Enumerate</a></li>
-  <li><a href="#setup-database-pipeline" id="toc-setup-database-pipeline" class="nav-link" data-scroll-target="#setup-database-pipeline">Setup Database Pipeline</a></li>
-  <li><a href="#parameterizing-database-tables" id="toc-parameterizing-database-tables" class="nav-link" data-scroll-target="#parameterizing-database-tables">Parameterizing Database Tables</a></li>
-  <li><a href="#light" id="toc-light" class="nav-link" data-scroll-target="#light">Light</a></li>
-  <li><a href="#close-connection" id="toc-close-connection" class="nav-link" data-scroll-target="#close-connection">Close Connection</a></li>
-  </ul>
-<div class="quarto-alternate-notebooks"><h2>Notebooks</h2><ul><li><a href="index-preview.html"><i class="bi bi-journal-code"></i>Article Notebook</a></li></ul></div></nav>
-</div>
-<div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-</div>
-<main class="content quarto-banner-title-block" id="quarto-document-content">
-
-
-
+  </div>
+    
+  
+    
+  </div>
   
 
 
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>data exists</code></pre>
-</div>
-<a class="quarto-notebook-link" id="nblink-1" href="index-preview.html">Source: Article Notebook</a></div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>files were already extracted
+</header>
 
-                    data
-0               test.csv
-1    data_dictionary.csv
-2  sample_submission.csv
-3    series_test.parquet
-4   series_train.parquet
-5              train.csv</code></pre>
-</div>
-</div>
-<section id="open-connection" class="level2">
-<h2 class="anchored" data-anchor-id="open-connection">Open Connection</h2>
-</section>
-<section id="enumerate" class="level2">
-<h2 class="anchored" data-anchor-id="enumerate">Enumerate</h2>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>drops and creates are same length</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>         could not drop              created
-0              age_enum             age_enum
-1     disease_risk_enum    disease_risk_enum
-2    enroll_season_enum   enroll_season_enum
-3             hour_enum            hour_enum
-4    id_actigraphy_enum   id_actigraphy_enum
-5   internet_hours_enum  internet_hours_enum
-6           minute_enum          minute_enum
-7     pciat_season_enum    pciat_season_enum
-8          quarter_enum         quarter_enum
-9           second_enum          second_enum
-10             sex_enum             sex_enum
-11             sii_enum             sii_enum
-12         weekday_enum         weekday_enum</code></pre>
-</div>
-</div>
-</section>
-<section id="setup-database-pipeline" class="level2">
-<h2 class="anchored" data-anchor-id="setup-database-pipeline">Setup Database Pipeline</h2>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>[1mSuccessfully created table: [22m[93mTrainCsv, [1m[39mRow count: [22m[36m3960 [39m
-[1mSuccessfully created table: [22m[93mTestCsv, [1m[39mRow count: [22m[36m20 [39m
-[1mSuccessfully created table: [22m[93mDataDict, [1m[39mRow count: [22m[36m81 [39m
-[1mSuccessfully created table: [22m[94mActigraphyTrain, [1m[39mRow count: [22m[92m314569149 [39m
-[1mSuccessfully created table: [22m[94mActigraphyTest, [1m[39mRow count: [22m[92m439726 [39m</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>┌─────────┐
-│ Success │
-│ boolean │
-├─────────┤
-│ 0 rows  │
-└─────────┘</code></pre>
-</div>
-</div>
-</section>
-<section id="parameterizing-database-tables" class="level2">
-<h2 class="anchored" data-anchor-id="parameterizing-database-tables">Parameterizing Database Tables</h2>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>         id quarter weekday      light     time_of_day  relative_date_PCIAT
-0  00115b9f       3       4  53.000000  56940000000000                 41.0
-1  00115b9f       3       4  51.666668  56945000000000                 41.0
-2  00115b9f       3       4  50.333332  56950000000000                 41.0
-3  00115b9f       3       4  50.500000  56955000000000                 41.0
-4  00115b9f       3       4  33.166668  57235000000000                 41.0
-5  00115b9f       3       4  31.333334  57240000000000                 41.0
-6  00115b9f       3       4  29.500000  57245000000000                 41.0
-7  00115b9f       3       4  27.666666  57250000000000                 41.0
-8  00115b9f       3       4  25.833334  57255000000000                 41.0
-9  00115b9f       3       4  24.000000  57260000000000                 41.0</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>┌─────────┐
-│ Success │
-│ boolean │
-├─────────┤
-│ 0 rows  │
-└─────────┘</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>         id      light weekday quarter  hour_of_day
-0  00115b9f  53.000000       4       3    15.816667
-1  00115b9f  51.666668       4       3    15.818056
-2  00115b9f  50.333332       4       3    15.819444
-3  00115b9f  50.500000       4       3    15.820833
-4  00115b9f  33.166668       4       3    15.898611
-5  00115b9f  31.333334       4       3    15.900000
-6  00115b9f  29.500000       4       3    15.901389
-7  00115b9f  27.666666       4       3    15.902778
-8  00115b9f  25.833334       4       3    15.904167
-9  00115b9f  24.000000       4       3    15.905556</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>┌─────────┐
-│ Success │
-│ boolean │
-├─────────┤
-│ 0 rows  │
-└─────────┘</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>┌─────────┐
-│ Success │
-│ boolean │
-├─────────┤
-│ 0 rows  │
-└─────────┘</code></pre>
-</div>
-</div>
-</section>
-<section id="light" class="level2">
-<h2 class="anchored" data-anchor-id="light">Light</h2>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>┌─────────┐
-│ Success │
-│ boolean │
-├─────────┤
-│ 0 rows  │
-└─────────┘</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>┌─────────┐
-│ Success │
-│ boolean │
-├─────────┤
-│ 0 rows  │
-└─────────┘</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>          id enroll_season age  ...       q1_q2       q2_q3     q3_max
-0   00115b9f        Winter   9  ...   61.598175   52.751816  17.028899
-1   001f3379        Spring  13  ...   38.888096   27.347464   3.427287
-2   00f332d1        Winter  14  ...   70.715782  171.973113  20.071337
-3   012e3869        Summer   6  ...   21.508371   14.481548  11.506686
-4   029a19c9        Winter  17  ...   58.939554   35.558205   7.527847
-5   02cebf33        Spring  12  ...   21.777184   44.795054  52.640018
-6   02cf7384        Summer  16  ...   21.493338   24.073275   7.112587
-7   035c96dd        Summer  13  ...   16.632181   19.231159  14.557280
-8   0417c91e        Spring   6  ...  132.319225  197.593949  17.053696
-9   04afb6f9        Summer  17  ...   19.530917   19.757721  10.801692
-10  04bb1a76        Winter   9  ...    6.873172    7.230197   6.914000
-11  04d06a9c          Fall  10  ...   21.100691   29.801872  15.415018
-12  051680a0        Winter   7  ...  132.766212  244.544484  42.694900
-13  055156e2        Summer  12  ...   31.630828   27.566469  12.964960
-14  05db1b9b        Spring   8  ...   67.801808   60.521537   4.864751
-15  05e94f88        Summer  10  ...    4.367119    2.980977   2.504395
-16  063b16fc        Spring  10  ...  119.177506  121.367623  12.889071
-17  064e8da5        Spring   5  ...   65.018140   59.609439  12.166769
-18  0668373f        Winter   9  ...  118.037906  149.186439   5.072283
-19  067b9287        Spring   7  ...   13.767201   24.280921   9.309501
 
-[20 rows x 9 columns]</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>count    981.000000
-mean       1.018349
-std        1.092493
-min        0.000000
-25%        0.000000
-50%        1.000000
-75%        2.000000
-max        3.000000
-Name: useHrs, dtype: float64</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>  column_name column_type  min  ...  q75  count null_percentage
-0      useHrs      DOUBLE  0.0  ...  2.0    992            1.11
-
-[1 rows x 12 columns]</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>Successfully created table: Risk1, Row count: 24
-Successfully created table: Risk2, Row count: 1
-Successfully created table: Risk3, Row count: 20
-Successfully created table: Risk4, Row count: 2</code></pre>
-</div>
-<div class="cell-output cell-output-stdout">
-<pre><code>┌─────────┐
-│ Success │
-│ boolean │
-├─────────┤
-│ 0 rows  │
-└─────────┘</code></pre>
-</div>
-</div>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>    risk_category       sii  ...  q3_avg_light_exposure  q4_avg_light_exposure
-0     Underweight  0.242424  ...             115.302923              13.184818
-1          Normal  0.500000  ...              90.398979              30.341287
-2       Increased  0.000000  ...              81.097121               8.060766
-3       Very High  0.500000  ...              65.692813              19.520294
-4  Extremely High  0.000000  ...             117.726100              24.965206
-
-[5 rows x 7 columns]</code></pre>
-</div>
-</div>
-<div class="cell">
+<div class="column-screen-inset">
+<div class="cell" data-file="../diagrams/emermaid.mmd" data-layout-align="default">
 <div class="cell-output-display">
+<div id="fig-childMermaid1" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-childMermaid1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div>
-<figure class="figure">
-<p><a href="index_files/figure-html/unnamed-chunk-41-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1"><img src="index_files/figure-html/unnamed-chunk-41-1.png" class="img-fluid figure-img" width="672"></a></p>
+<pre class="mermaid mermaid-js" data-label="fig-childMermaid1">---
+config:
+  theme: dark
+---
+erDiagram
+    PARTICIPANT ||--o{ DEMOGRAPHICS : has
+    PARTICIPANT ||--o{ PHYSICAL_MEASURES : has
+    PARTICIPANT ||--o{ FITNESSGRAM : has
+    PARTICIPANT ||--o{ BIA : has
+    PARTICIPANT ||--o{ BEHAVIORAL_MEASURES : has
+    PARTICIPANT {
+        string id
+    }
+    DEMOGRAPHICS {
+        string season
+        float age
+        int sex
+    }
+    PHYSICAL_MEASURES {
+        string season
+        float bmi
+        float height
+        float weight
+        int waist_circumference
+        int blood_pressure
+        int heart_rate
+    }
+    FITNESSGRAM {
+        string season
+        int curl_ups
+        float grip_strength
+        int push_ups
+        float sit_reach
+        int trunk_lift
+        categorical fitness_zones
+    }
+    BIA {
+        string season
+        float body_fat
+        float muscle_mass
+        float bone_mass
+        categorical activity_level
+        categorical frame_size
+    }
+    BEHAVIORAL_MEASURES {
+        string season
+        float activity_score
+        int internet_usage
+        int sleep_score
+        int internet_addiction_score
+    }
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-childMermaid1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: child1
+</figcaption>
 </figure>
 </div>
 </div>
 </div>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><a href="index_files/figure-html/unnamed-chunk-42-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2"><img src="index_files/figure-html/unnamed-chunk-42-1.png" class="img-fluid figure-img" width="614"></a></p>
-</figure>
 </div>
-</div>
-</div>
-</section>
-<section id="close-connection" class="level2">
-<h2 class="anchored" data-anchor-id="close-connection">Close Connection</h2>
-</section>
 
-</main>
-<!-- /main column -->
+
+
+</main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
@@ -796,38 +614,6 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 });
 </script>
 </div> <!-- /content -->
-<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
-(function() {
-  let previousOnload = window.onload;
-  window.onload = () => {
-    if (previousOnload) {
-      previousOnload();
-    }
-    lightboxQuarto.on('slide_before_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      const href = trigger.getAttribute('href');
-      if (href !== null) {
-        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
-        if (imgEl !== null) {
-          const srcAttr = imgEl.getAttribute("src");
-          if (srcAttr && srcAttr.startsWith("data:")) {
-            slideConfig.href = srcAttr;
-          }
-        }
-      } 
-    });
-  
-    lightboxQuarto.on('slide_after_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      if (window.Quarto?.typesetMath) {
-        window.Quarto.typesetMath(slideNode);
-      }
-    });
-  
-  };
-  
-})();
-          </script>
 
 
 

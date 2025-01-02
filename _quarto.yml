@@ -1,24 +1,13 @@
 project:
-  type: manuscript
-
-manuscript:
-  article: index.qmd
-  code-links: 
-    - text: Data Import
-      icon: file-code
-      href: https://github.com/ericMossotti/problematicHabits
-  notebooks: 
-    - notebook: 'notebooks/data-modeling.qmd'
-      title: "Data Model Schematic"
-
-
-citation-location: margin
-citations-hover: true
-link-citations: true
-csl: 'bibliography/csl/apa.csl'
-zotero: true
-
+  type: website
+  output-dir: docs
+  
 engine: knitr
+execute:
+  freeze: auto
+  
+layout: article
+editor: visual
 
 format:
   html:
@@ -29,14 +18,20 @@ format:
     theme:
        - darkly
        - 'scss/main.scss'
-  #docx: default
-  #jats: default
 
-  # (other formats)
-  # pdf: default
+#manuscript:
+#  article: index.qmd
+#  code-links: 
+#    - text: Data Import
+#      icon: file-code
+#      href: https://github.com/ericMossotti/problematicHabits
+#  notebooks: 
+#    - notebook: 'notebooks/data-modeling.qmd'
+#      title: "Data Model Schematic"
 
-execute:
-  freeze: auto
 
-editor: visual
+
+
+
+
 
