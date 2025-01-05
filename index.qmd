@@ -106,21 +106,27 @@ ggplot_theming_flipped_axes <- function() {
       panel.grid.major.y = element_line(linetype = 'solid'),
       panel.grid.minor.y = element_line(linetype = 'dotted'),
       axis.title = element_text(color = 'gray100'),
-      axis.text = element_text(color = 'gray'))
+      axis.text = element_text(color = 'gray'),
+      legend.background = element_rect(fill = '#222'),
+      legend.text = element_text(color = 'gray'),
+      legend.title = element_text(color = 'white'))
 }
 
 ggplot_theming <- function() {
   theme_linedraw() +
     theme(
       plot.title = element_text(color = 'white'),
-      plot.background = element_rect(fill = 'transparent'),
-      panel.background = element_rect(fill = 'transparent'),
+      plot.background = element_rect(fill = '#222'),
+      panel.background = element_rect(fill = '#222'),
       panel.grid.major.x = element_line(linetype = 'solid'),
       panel.grid.minor.x = element_line(linetype = "dotted"),
       panel.grid.major.y = element_line(linetype = 'dashed'),
       panel.grid.minor.y = element_line(linetype = 'dotted'),
       axis.title = element_text(color = 'gray100'),
-      axis.text = element_text(color = 'gray'))
+      axis.text = element_text(color = 'gray'),
+      legend.background = element_rect(fill = '#222'),
+      legend.text = element_text(color = 'gray'),
+      legend.title = element_text(color = 'white'))
   }
 ```
 
@@ -139,37 +145,55 @@ import os
 import duckdb
 import pandas as pd
 import re
+from pandas.io.formats.style import Styler
+import numpy as np
 ```
 
 ```{python}
 #| label: "makeDir"
 #| code-summary: "Check if the directory, 'data', exists."
+
 try:
-  os.mkdir('data')
+  os.mkdir('./data')
 except FileExistsError:
   print(f"data exists")
 ```
 
 ```{python}
-#| label: "unzipping"
+#| label: tbl-unzipping
+#| tbl-cap: "unzippers"
 #| code-summary: "Extracts the files and lists files."
 
 zip_path = "child-mind-institute-problematic-internet-use.zip"
 
-if not os.path.exists('data/train.csv'):
+if not os.path.exists('./data/train.csv'):
   with ZipFile(zip_path) as zf:
-    ZipFile.extractall(zf, path = 'data')
-    print(
-      f"files were extracted"
-      ,pd.DataFrame(data = os.listdir('data'), columns = ['data'])
-      ,sep = "\n"*2
-      )
+    ZipFile.extractall(zf, path = './data')
+    print("Extracted files", sep = "\n"*2)
 else:
-  print(
-    f"files were already extracted"
-    ,pd.DataFrame(data = os.listdir('data'), columns = ['data'])
-    ,sep = "\n"*2
-    )
+  print("Files already exist", sep = "\n"*2)
+
+extracts = pd.DataFrame(data = os.listdir('./data'), columns = ['./data'])
+
+```
+
+```{r}
+
+r_df <- py$extracts
+
+notes_list =  list("./data directory file list")
+locations_list = list("./data")
+
+# Create a table dataframe, or tibble, of footnotes
+footnotes_df <- tibble(notes = notes_list, locations = locations_list)
+
+rTable <- r_table_theming(rDataFrame = r_df,
+                          title = "Directory Files",
+                          subtitle = NULL,
+                          footnotes_df,
+                          source_note = md("**source**: './data'"))
+
+rTable
 ```
 
 ### Establish a Database Connection
@@ -313,7 +337,9 @@ pd.concat([dropFrame, createFrame], axis = 1)
 
 Not sure why the data had hyphens in the columns names, originally. These hyphens interfere with SQL query operations, so I have the mind to replace them with underscore characters. I'm not going to overwrite the original CSVs as I wish to maintain integrity and a clear trail of data processing steps. Also, having the original data to fall back on if need be, without re-downloading could be helpful.
 
-### Setup Database Pipeline
+### Meaningful Database Pipeline Setup
+
+Doing my best to apply transformations as I read the data into the database from the files to minimize steps needed to derive meaning from the data.
 
 ```{python}
 #| label: "setupPipeline"
@@ -323,6 +349,7 @@ def setup_duckdb_pipeline(
   csvDict: dict, 
   parquetDict: dict, 
   conn: duckdb.DuckDBPyConnection) -> None:
+    
   try:
     {
       table_name: duckdb.sql(f"""
@@ -347,6 +374,7 @@ def setup_duckdb_pipeline(
 # Create tables from Parquet files
 def write_datasets (
   conn: duckdb.DuckDBPyConnection, parquetDict: dict):
+    
       try:
         {
           table_name: duckdb.sql(f"""
@@ -356,7 +384,7 @@ def write_datasets (
              ,quarter::TEXT::quarter_enum AS quarter
              ,weekday::TEXT::weekday_enum AS weekday
              ,light
-             ,time_of_day
+             ,(time_of_day / 3_600_000_000_000) AS hour_of_day
              ,relative_date_PCIAT
            FROM read_parquet(
              '{file_path}'
@@ -398,12 +426,64 @@ parquetDict = {
 try:
   setup_duckdb_pipeline(csvDict, parquetDict, conn)
   conn.sql(f"CHECKPOINT;")
+  pydf = conn.sql(f"""
+  SELECT *
+  FROM ActigraphyTrain
+  LIMIT 10;""").df()
 except:
   print(f"Could not set up data pipeline.")
   
 ```
 
+```{python}
+pydf = conn.sql(f"""
+SELECT *
+FROM ActigraphyTrain
+ORDER BY ALL
+LIMIT 10;""").df()
+```
+
+```{r}
+#| label: tbl-ActigraphyTrain
+
+r_df <- py$pydf
+
+notes_list =  list(
+  "Unique participant identifier code, to track related data from actigraphy to hbn datasets.",
+  "Annual quarter related to month of observation.",
+  "Day of the week (Monday = 1)",
+  "Light exposure, measured in 'lux'",
+  "24-hour time converted to a float for easier conversion for time-series analysis.",
+  "Days since questionairre, also convenient to help order daily values for time-series analysis."
+  )
+
+locations_list = list("id",
+                      "quarter",
+                      "weekday",
+                      "light",
+                      "hour_of_day",
+                      "relative_date_PCIAT")
+
+# Create a table data-frame, or tibble, of footnotes
+footnotes_df <- tibble(notes = notes_list, 
+                       locations = locations_list)
+
+rTable <- r_table_theming(rDataFrame = r_df,
+                          title = "Actigraphy Data - Training Set",
+                          subtitle = NULL,
+                          footnotes_df,
+                          source_note = md("**source**: Kaggle"))
+
+rTable
+```
+
 ### Feature Tables
+
+It might be helpful to create tables with enum data types to be joined efficiently to other tables without redundant data. I first read in the tables to the database, and then create tables based on id as enum data types information and then drop the original csv based tables
+
+CSV based tables -
+
+Featured tables
 
 ```{python}
 #| label: "create_table_with_regex_columns()"
@@ -415,7 +495,7 @@ def filter_columns_by_regex(col_dict: dict, regex_pattern: str) -> dict:
   """
   :::WHY(s):::
     Can there be a way to use dictionaries to specify columns?
- 
+
   :::GOAL(s):::
     Regex selection of column names from a dictionary.
   """
@@ -425,7 +505,6 @@ def filter_columns_by_regex(col_dict: dict, regex_pattern: str) -> dict:
     if re.search(regex_pattern, col)
     }
 
-
 def create_table_with_regex_columns(
   conn: duckdb.duckdb
   ,source_table: str
@@ -433,18 +512,18 @@ def create_table_with_regex_columns(
   ,regex_pattern: str 
   ,col_dict: dict
   ) -> None:  
-  
+
   """
   :::WHY(s):::
     There should to be a more streamlined way to utilize columnar information following regular string patterns to generate tables based on such information. This could follow and carry out pre-existing data modeling plans.
-  
+
   :::GOAL(s):::
     To create new database tables with modularized SQL queries generated with the help of regex pattern matching selection.
-  
+
   :::EXAMPLE(s):::
     The dictionary item:
       "Demographic": r"^id|^sii|^basic\S+"
-  
+ 
     Would generate a table named 'Demographic' from data with columns for 'id', 'sii' and all columns starting with 'basic' strings. 
   """
 
@@ -460,7 +539,7 @@ def create_table_with_regex_columns(
   """
 
   conn.execute(regex_select_sql)
- 
+
 # It'd be useful to get the data types for creating a new table of values
 coltype_overview = conn.execute(f"""
   SELECT 
@@ -488,17 +567,16 @@ regex_dict_train = {
 
 # There's no Pciat in the test set
 regex_dict_test = {
-  "Demographic_OfTest": r"^id|^basic\S+"
-  ,"Physical_OfTest": r"^id|^physical\S+"
-  ,"FgVital_OfTest": r"^id|^fitness_E\S+"
-  ,"FgChild_OfTest": r"^id|^fgc\S+"
-  ,"Bia_OfTest": r"^id|^bia\S+"
-  ,"Paqa_OfTest": r"^id|^paq_a\S+"
+  "DemographicTest": r"^id|^basic\S+"
+  ,"PhysicalTest": r"^id|^physical\S+"
+  ,"FgVitalTest": r"^id|^fitness_E\S+"
+  ,"FgChildTest": r"^id|^fgc\S+"
+  ,"BiaTest": r"^id|^bia\S+"
+  ,"PaqaTest": r"^id|^paq_a\S+"
  # ,"Pciat_OfTest": r"^id|^pciat\S+" 
-  ,"Sds_OfTest": r"^id|^sds\S+"
-  ,"InternetUse_OfTest": r"^id|^preint\S+"
+  ,"SdsTest": r"^id|^sds\S+"
+  ,"InternetUseTest": r"^id|^preint\S+"
   }
- 
 
 # Loop through the data structures to create tables for the train set
 for new_table_name, regex_pattern in regex_dict_train.items():
@@ -520,50 +598,15 @@ for new_table_name, regex_pattern in regex_dict_test.items():
     ,col_dict
     )
 
+conn.sql(f"DROP TABLE TrainCsv;")
+conn.sql(f"DROP TABLE TestCsv;")
 ```
 
 ```{python}
-conn.sql(f"SELECT * from ActigraphyTest LIMIT 10;").df()
-```
+#| label: "joinDemoAndActigraphyOnId"
+#| code-summary: "Perform a join on matching Ids to combine demographics data with actigraphy data such as time and light exposure."
 
-```{python}
-# 3.6e+12
-conn.sql(f"""
-CREATE OR REPLACE TABLE ActigraphyTest AS
-SELECT
-  id
-  ,light
-  ,weekday
-  ,quarter
-  ,(time_of_day / 3_600_000_000_000) AS hour_of_day
-FROM 
-  ActigraphyTest;
-""")
-```
-
-```{python}
-# 3.6e+12
-conn.sql(f"""
-CREATE OR REPLACE TABLE ActigraphyTrain AS
-SELECT
- id
- ,light
- ,weekday
- ,quarter
- ,(time_of_day / 3_600_000_000_000) AS hour_of_day
-FROM 
-  ActigraphyTrain;
-""")
-
-conn.sql(f"CHECKPOINT;")
-```
-
-```{python}
-conn.sql(f"SELECT * FROM ActigraphyTrain LIMIT 10;").df()
-```
-
-```{python}
-conn.sql(f"""
+conn.execute(f"""
 CREATE OR REPLACE TABLE IntermediateActigraphy AS
 SELECT
   id
@@ -577,11 +620,7 @@ ORDER BY
   id ASC;
 """)
 
-conn.sql(f"CHECKPOINT;")
-```
-
-```{python}
-conn.sql(f"""
+conn.execute(f"""
 CREATE OR REPLACE TABLE 
   ActigraphyTrain
 AS
@@ -597,14 +636,84 @@ AS
     ia.id = at.id;
 """)
 
-conn.sql(f"CHECKPOINT;")
+conn.execute(f"""
+CREATE OR REPLACE TABLE IntermediateActigraphy AS
+SELECT
+  id
+  ,basic_demos_enroll_season::TEXT::enroll_season_enum AS enroll_season
+  ,basic_demos_age::TEXT::age_enum AS age
+  ,basic_demos_sex::TEXT AS sex
+FROM 
+  DemographicTest
+ORDER BY
+  id ASC;
+""")
+
+conn.execute(f"""
+CREATE OR REPLACE TABLE 
+  ActigraphyTest
+AS
+  SELECT
+    ia.*
+    ,at.hour_of_day
+    ,at.light
+  FROM 
+    ActigraphyTest at 
+  LEFT JOIN 
+    IntermediateActigraphy ia
+  ON 
+    ia.id = at.id;
+""")
+
+conn.execute(f"""
+DROP TABLE IntermediateActigraphy;
+""")
+
+conn.execute(f"CHECKPOINT;")
 ```
+
+### Data Model
+
+::: column-screen-inset
+```{mermaid}
+%%| label: fig-childMermaid
+%%| fig-cap: "child"
+%%| file: diagrams/emermaid.mmd
+```
+:::
+
+## Actigraphy, Physical, and Demographics
+
+It might be useful to explore how the time of day and associated exposure to light might correlate to other factors, such as sii, physical characteristics, and internet use.
+
+**Hypothesis**:\
+More time spent indoors on the internet might be associated with lower light exposure during daytime and higher light exposure during nighttime.
+
+**Test**:
+
+**Day**
+
+-   Q1_Q2
+
+-   Q2_Q3
+
+**Night**
+
+-   min_Q1
+
+-   Q3_max
+
+BMI Risk Categories [@zierle-ghosh_physiology_2024].
+
+Lux Exposure Categories [@noauthor_lux_nodate].
+
+### Quartiles of light exposure by hour of day.
 
 ```{python}
 #| label: "quartiler()"
 #| code-summary: "Extract quartile summary values into a dictionary with intuitive key labels."
 
-def quartiler (
+def quartiler(
   conn: duckdb.duckdb, 
   col_name: str, 
   source_name: str) -> dict:
@@ -633,54 +742,6 @@ def quartiler (
   
   return quartileDict
 
-```
-
-### Data Model
-
-::: column-screen-inset
-```{mermaid}
-%%| label: fig-childMermaid
-%%| fig-cap: "child"
-%%| file: diagrams/emermaid.mmd
-```
-:::
-
-## Actigraphy, Physical, and Demographics
-
-cool [@zierle-ghosh_physiology_2024].
-
-```{python}
-
-def intermediateLighter(conn: duckdb.duckdb, new_tables: list, quarters: dict, quartuples: pd.Series) -> None:
-  """
-  :::WHY(s):::
-    Tables based on the same parameters but different parameter values could be modularized.
-    
-  :::GOAL(s):::
-    Process repetitive SQL efficiently and intuitively using data structures that simplify the process.
-  """
-  for i in list(range(4)):
-    conn.sql(f"""
-      CREATE OR REPLACE TABLE '{new_tables[i]}' AS
-      SELECT
-        id
-        ,enroll_season
-        ,age
-        ,sex
-        ,sii
-        ,AVG(light) AS '{quartuples.index[i]}'
-      FROM 
-        ActigraphyTrain
-      WHERE 
-        hour_of_day BETWEEN 
-            '{quarters[quartuples.iloc[i][0]]}'::DOUBLE 
-          AND 
-            '{quarters[quartuples.iloc[i][1]]}'::DOUBLE
-      GROUP BY 
-        ALL
-      ORDER BY 
-        id ASC;""")
-        
 # execute quartiler()
 quarters = quartiler(conn, 'hour_of_day', 'ActigraphyTrain')
 
@@ -695,66 +756,243 @@ quartuples = pd.Series(
   ,'q1_q2'
   ,'q2_q3'
   ,'q3_max'])
+```
 
-new_tables = ['Light1', 'Light2', 'Light3', 'Light4']
+```{python}
+#| label: "intermediateLighter()"
+#| code-summary: "Extract actigraphy data based on time of day quartiles"
 
-intermediateLighter(conn, new_tables, quarters, quartuples)
+def intermediateLighter(
+  conn: duckdb.duckdb,
+  new_tables: list,
+  quarters: dict, 
+  quartuples: pd.Series,
+  from_table: str) -> None:
+  """
+  :::WHY(s):::
+    Tables based on the same parameters but different parameter values could be modularized.
+    
+  :::GOAL(s):::
+    Process repetitive SQL efficiently and intuitively using data structures that simplify the process. 
+  
+  """
+  for i in list(range(4)):
+    conn.sql(f"""
+      CREATE OR REPLACE TABLE '{new_tables[i]}' AS
+      SELECT
+        id
+        ,enroll_season
+        ,age
+        ,sex
+        ,sii
+        ,AVG(light) AS '{quartuples.index[i]}'
+      FROM 
+        '{from_table}'
+      WHERE 
+        hour_of_day BETWEEN 
+            '{quarters[quartuples.iloc[i][0]]}'::DOUBLE 
+          AND 
+            '{quarters[quartuples.iloc[i][1]]}'::DOUBLE
+      GROUP BY 
+        ALL
+      ORDER BY 
+        id ASC;""")
+
+def joinLights (from_to_tables: dict) -> None:
+  
+  for from_table, to_table in from_to_tables.items():
+    
+    new_tables = ['Light1', 'Light2', 'Light3', 'Light4']
+    
+    intermediateLighter(conn, new_tables, quarters, quartuples, from_table)
+  
+    conn.sql(f"CHECKPOINT;")
+  
+    conn.sql(f"""
+    CREATE OR REPLACE TABLE '{to_table}' AS
+    SELECT 
+      l1.*
+      ,l2.q1_q2
+      ,l3.q2_q3
+      ,l4.q3_max
+    FROM 
+      Light1 l1
+    LEFT JOIN Light2 l2 ON l1.id = l2.id
+    LEFT JOIN Light3 l3 ON l1.id = l3.id
+    LEFT JOIN Light4 l4 ON l1.id = l4.id;
+    """)
+
+from_to_tables = {
+  'ActigraphyTrain': 'AggregatedLights'
+  ,'ActigraphyTest': 'AggregatedLightsTest'
+  }
+
+joinLights(from_to_tables)
+```
+
+```{python}
+
+lightdropList = list('Light1', 'Light2', 'Light3', 'Light4')
+
+for lightdrop in lightdropList:
+  conn.sql(f"DROP TABLE '{lightdrop}';")
 
 conn.sql(f"CHECKPOINT;")
 
+pydf = conn.sql(f"SELECT * FROM AggregatedLights LIMIT 10;").df()
+```
+
+```{r}
+#| label: tbl-AggregatedLights
+
+r_df <- py$pydf
+
+notes_list =  list(
+  "Unique participant identifier.",
+  "Participant enrollment into study season.",
+  "Age in years.",
+  "Sex (0 = Female, 1 = Male)",
+  "Severity Impairment Index",
+  "Mean light exposure across Q1 of a 24 hour time scale.",
+  "Mean light exposure across Q2 of a 24 hour time scale.",
+  "Mean light exposure across Q3 of a 24 hour time scale.",
+  "Mean light exposure across Q4 of a 24 hour time scale."
+  )
+
+locations_list = list(
+  "id"
+  ,"enroll_season"
+  ,"age"
+  ,"sex"
+  ,"sii"
+  ,'min_q1'
+  ,'q1_q2'
+  ,'q2_q3'
+  ,'q3_max')
+
+# Create a table data-frame, or tibble, of footnotes
+footnotes_df <- tibble(notes = notes_list, 
+                       locations = locations_list)
+
+rTable <- r_table_theming(rDataFrame = r_df,
+                          title = "Quartile Data - Lights",
+                          subtitle = NULL,
+                          footnotes_df,
+                          source_note = md("**source**: Kaggle"))
+
+rTable
+
 ```
 
 ```{python}
-conn.sql(f"""
-CREATE OR REPLACE TABLE AggregatedAnalysis AS
-SELECT 
-  l1.*
-  ,l2.q1_q2
-  ,l3.q2_q3
-  ,l4.q3_max
-FROM 
-  Light1 l1
-LEFT JOIN Light2 l2 ON l1.id = l2.id
-LEFT JOIN Light3 l3 ON l1.id = l3.id
-LEFT JOIN Light4 l4 ON l1.id = l4.id;
-""")
 
-conn.sql(f"CHECKPOINT;")
+lightsDict = {
+  'AggregatedLights': 'InternetUse', 
+  'AggregatedLightsTest': 'InternetUseTest'
+  }
+
+for from_tbl, join_tbl in lightsDict.items():
+  conn.sql(f"""
+  CREATE OR REPLACE TABLE '{from_tbl}' AS
+  SELECT
+    ft.*
+    ,jt.preint_eduhx_computerinternet_hoursday::INTEGER::TEXT::internet_hours_enum AS useHrs 
+  FROM
+    '{from_tbl}' ft
+    LEFT JOIN 
+      {join_tbl} jt
+    ON 
+      ft.id = jt.id;
+  """)
 ```
 
-```{python}
-conn.sql(f"SELECT * FROM AggregatedAnalysis LIMIT 20;").df()
-```
+Checking the internet use hours parameter to get an overview along with null percentage to see if we might be able to use it, as-is, for joining with light quartiles.
 
 ```{python}
-conn.sql(f"""
-CREATE OR REPLACE TABLE AggregatedAnalysis AS
-SELECT
-  aa.*
-  ,preint_eduhx_computerinternet_hoursday AS useHrs 
-FROM
-  AggregatedAnalysis aa
-LEFT JOIN 
-  InternetUse iu
-ON
-  aa.id = iu.id;
-""")
-```
 
-```{python}
-all_aa = conn.sql(f"SELECT * FROM AggregatedAnalysis;").df()
-all_aa['useHrs'].describe()
-```
+all_al = conn.sql(f"SELECT * FROM AggregatedLights;").df()
+pyDescribe = all_al.describe()
 
-```{python}
-conn.sql(f"""
+duckSummary = conn.sql(f"""
 SUMMARIZE
-SELECT useHrs
-FROM AggregatedAnalysis;
+SELECT *
+FROM AggregatedLights;
 """).df()
+
+duckSummary = duckSummary.set_index('column_name')
+
+pyDescribe, duckSummary, duckSummary.at['sii', 'null_percentage']
+```
+
+Group-averaging sii, internet use hours, and pre-averaged lux quartiles by age and sex.
+
+```{python}
+
+conn.sql(f"""
+CREATE OR REPLACE TABLE LuxAndSiiByAgeAndSex AS
+SELECT
+  useHrs
+  ,COUNT(*) AS observations
+  ,AVG(sii::INTEGER) AS sii
+  ,AVG(min_q1) AS '12am_6am_avg_lux'
+  ,AVG(q1_q2) AS '6am_12pm_avg_lux'
+  ,AVG(q2_q3) AS '12pm_6pm_avg_lux'
+  ,AVG(q3_max) AS '6pm_12am_avg_lux'
+FROM 
+  AggregatedLights al
+GROUP BY 
+  useHrs;""")
+
 ```
 
 ```{python}
+
+pydf = conn.sql(f"""
+SELECT * FROM LuxAndSiiByAgeAndSex;
+""").df()
+
+luxCategories.observations.sum()
+```
+
+```{r}
+#| label: tbl-lightUseHrs
+
+r_df <- py$pydf
+
+notes_list =  list("Hours spent on the internet, as reported by caregivers of the participants.", "Problematic behavior score.")
+locations_list = list("useHrs", "sii")
+
+# Create a table dataframe, or tibble, of footnotes
+footnotes_df <- tibble(notes = notes_list, locations = locations_list)
+
+rTable <- r_table_theming(rDataFrame = r_df,
+                          title = "Problematic Behavior to Internet Usage",
+                          subtitle = NULL,
+                          footnotes_df,
+                          source_note = md("**source**: Kaggle"))
+
+rTable
+```
+
+```{r}
+#| label: "fig-agex"
+library(scales)
+
+r_plot <- ggplot(data = r_df, 
+                 mapping = aes(x = useHrs, y = sii)
+                 ) +
+  geom_col(aes(fill = sii)) +
+  scale_fill_gradient(low = muted("yellow"), high = muted("purple")) +
+  labs(title = 'Risk Categories', 
+       x = 'Hours of Internet Use', 
+       y = 'Light Exposure')
+ # coord_flip()
+
+r_plot + ggplot_theming()
+```
+
+```{python}
+
 riskyDictionary = {
   'Risk1': 
     (f",CASE WHEN ph.physical_bmi < 18.5 THEN 'Underweight'"
@@ -763,7 +1001,7 @@ riskyDictionary = {
     ,f"WHEN ph.physical_bmi BETWEEN 30.0 AND 34.9 THEN 'High'"
     ,f"WHEN ph.physical_bmi BETWEEN 35.0 AND 39.9 THEN 'Very High'"
     ,f"WHEN ph.physical_bmi >= 40 THEN 'Extremely High'"
-    ,f"ph.physical_waist_circumference <= 35 AND aa.sex = '0'"),
+    ,f"ph.physical_waist_circumference <= 35 AND al.sex = '0'"),
   'Risk2':
     (f",CASE WHEN ph.physical_bmi < 18.5 THEN 'Underweight'"
     ,f"WHEN ph.physical_bmi BETWEEN 18.5 AND 24.9 THEN 'Normal'"
@@ -771,7 +1009,7 @@ riskyDictionary = {
     ,f"WHEN ph.physical_bmi BETWEEN 30.0 AND 34.9 THEN 'Very High'"
     ,f"WHEN ph.physical_bmi BETWEEN 35.0 AND 39.9 THEN 'Very High'"
     ,f"WHEN ph.physical_bmi >= 40 THEN 'Extremely High'"
-    ,f"ph.physical_waist_circumference > 35 AND aa.sex = '0'"),
+    ,f"ph.physical_waist_circumference > 35 AND al.sex = '0'"),
   'Risk3':
     (f",CASE WHEN ph.physical_bmi < 18.5 THEN 'Underweight'"
     ,f"WHEN ph.physical_bmi BETWEEN 18.5 AND 24.9 THEN 'Normal'"
@@ -779,7 +1017,7 @@ riskyDictionary = {
     ,f"WHEN ph.physical_bmi BETWEEN 30.0 AND 34.9 THEN 'High'"
     ,f"WHEN ph.physical_bmi BETWEEN 35.0 AND 39.9 THEN 'Very High'"
     ,f"WHEN ph.physical_bmi >= 40 THEN 'Extremely High'"
-    ,f"ph.physical_waist_circumference <= 40 AND aa.sex = '1'"),
+    ,f"ph.physical_waist_circumference <= 40 AND al.sex = '1'"),
   'Risk4':
     (f",CASE WHEN ph.physical_bmi < 18.5 THEN 'Underweight'"
     ,f"WHEN ph.physical_bmi BETWEEN 18.5 AND 24.9 THEN 'Normal'"
@@ -787,20 +1025,21 @@ riskyDictionary = {
     ,f"WHEN ph.physical_bmi BETWEEN 30.0 AND 34.9 THEN 'Very High'"
     ,f"WHEN ph.physical_bmi BETWEEN 35.0 AND 39.9 THEN 'Very High'"
     ,f"WHEN ph.physical_bmi >= 40 THEN 'Extremely High'"
-    ,f"ph.physical_waist_circumference > 40 AND aa.sex = '1'")}
+    ,f"ph.physical_waist_circumference > 40 AND al.sex = '1'")
+    }
+
 ```
 
 ```{python}
+
 riskyDf = pd.DataFrame(data = riskyDictionary)
-```
 
-```{python}
 for key, value in riskyDf.items():
   try:
     conn.sql(f"""
     CREATE OR REPLACE TABLE {key} AS
     SELECT
-      aa.*
+      al.*
       {value[0]}
       {value[1]}
       {value[2]}
@@ -813,22 +1052,19 @@ for key, value in riskyDf.items():
     FROM 
       Physical ph 
     LEFT JOIN 
-      AggregatedAnalysis aa 
+      AggregatedLights al
     ON 
-      aa.id = ph.id
+      al.id = ph.id
     WHERE 
       {value[6]}
     ORDER BY 
-      aa.id ASC;""")
+      al.id ASC;
+      """)
     result = conn.execute(f"SELECT COUNT(*) FROM {key}").fetchone()
     print(f"Successfully created table: {key}, Row count: {result[0]}")
   except:
     print(f"Error loading this table: {key}")
-    
-conn.sql(f"CHECKPOINT")
-```
 
-```{python}
 conn.sql(f"""
 CREATE OR REPLACE TABLE 
   DiseaseRiskDemographic AS
@@ -840,9 +1076,19 @@ SELECT * EXCLUDE(risk_cat) FROM Risk3
 UNION BY NAME 
 SELECT * EXCLUDE(risk_cat) FROM Risk4;
 """)
+
+conn.sql(f"CHECKPOINT")
 ```
 
 ```{python}
+#| include: false
+#| eval: false
+
+tablesInfo = conn.sql(f"SELECT * FROM information_schema.tables;").df()
+```
+
+```{python}
+
 conn.sql(f"""
 CREATE OR REPLACE TABLE RiskCategorySummary AS
 SELECT 
@@ -858,16 +1104,7 @@ FROM
 GROUP BY 
   risk_category;
 """)
-```
 
-```{python}
-conn.sql(f"""
-SELECT * 
-FROM RiskCategorySummary;
-""").df()
-```
-
-```{python}
 pydf = conn.execute(f"""
 SELECT 
   risk_category
@@ -876,15 +1113,12 @@ FROM
   DiseaseRiskDemographic
 GROUP BY 
   risk_category;""").df()
-
 ```
 
 ```{r}
+#| label: tbl-riskefe
+
 r_df <- py$pydf
-```
-
-```{r}
-#| label: tbl-risk
 
 notes_list =  list("The disease risk category.", "The average light exposure for Q1.")
 locations_list = list("risk_category", "qLight")
