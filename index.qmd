@@ -31,7 +31,7 @@ The goal of the models is to, ultimately, make progress in the field of childhoo
 
 Nowadays, life is centered around the internet. At the same time, our biology has not undergone any systemic changes. First hand experience certainly tells me that that high levels of internet activity can have a negative impact on the mind.
 
-Is the quantity of internet activity itself truly determinant of negative outcome?
+Is the quantity of internet activity itself truly determinant of negative outcome? I think this is extremely limited as a hypothesis. Internet activity is not the same in all cases.
 
 ### Output Formatters
 
@@ -600,6 +600,7 @@ for new_table_name, regex_pattern in regex_dict_test.items():
 
 conn.sql(f"DROP TABLE TrainCsv;")
 conn.sql(f"DROP TABLE TestCsv;")
+
 ```
 
 ```{python}
@@ -670,6 +671,7 @@ DROP TABLE IntermediateActigraphy;
 """)
 
 conn.execute(f"CHECKPOINT;")
+
 ```
 
 ### Data Model
@@ -707,11 +709,11 @@ BMI Risk Categories [@zierle-ghosh_physiology_2024].
 
 Lux Exposure Categories [@noauthor_lux_nodate].
 
-### Quartiles of light exposure by hour of day.
+### Quartiles of light exposure by hour of day
 
 ```{python}
-#| label: "quartiler()"
-#| code-summary: "Extract quartile summary values into a dictionary with intuitive key labels."
+#| label: "intermediateLighter()"
+#| code-summary: "Extract actigraphy data based on time of day quartiles"
 
 def quartiler(
   conn: duckdb.duckdb, 
@@ -724,7 +726,6 @@ def quartiler(
   ::GOAL(s)::  
     To process SQL queries into useful quartile information represented by intuitive key labels.
   """
-
   summaryDf = conn.sql(f"""
   SUMMARIZE
   SELECT
@@ -742,32 +743,13 @@ def quartiler(
   
   return quartileDict
 
-# execute quartiler()
-quarters = quartiler(conn, 'hour_of_day', 'ActigraphyTrain')
-
-quartuples = pd.Series(
-  data = 
-  [('min','Q1')
-  ,('Q1', 'Q2')
-  ,('Q2', 'Q3')
-  ,('Q3' ,'max')]
-  ,index =
-  ['min_q1'
-  ,'q1_q2'
-  ,'q2_q3'
-  ,'q3_max'])
-```
-
-```{python}
-#| label: "intermediateLighter()"
-#| code-summary: "Extract actigraphy data based on time of day quartiles"
-
 def intermediateLighter(
   conn: duckdb.duckdb,
   new_tables: list,
   quarters: dict, 
   quartuples: pd.Series,
-  from_table: str) -> None:
+  from_table: str,
+  isTrain: bool = False) -> None:
   """
   :::WHY(s):::
     Tables based on the same parameters but different parameter values could be modularized.
@@ -776,40 +758,76 @@ def intermediateLighter(
     Process repetitive SQL efficiently and intuitively using data structures that simplify the process. 
   
   """
-  for i in list(range(4)):
-    conn.sql(f"""
-      CREATE OR REPLACE TABLE '{new_tables[i]}' AS
-      SELECT
-        id
-        ,enroll_season
-        ,age
-        ,sex
-        ,sii
-        ,AVG(light) AS '{quartuples.index[i]}'
-      FROM 
-        '{from_table}'
-      WHERE 
-        hour_of_day BETWEEN 
-            '{quarters[quartuples.iloc[i][0]]}'::DOUBLE 
-          AND 
-            '{quarters[quartuples.iloc[i][1]]}'::DOUBLE
-      GROUP BY 
-        ALL
-      ORDER BY 
-        id ASC;""")
-
+  detect_frame = conn.execute(f"""
+  SELECT *
+  FROM 
+    information_schema.columns
+  WHERE 
+    table_name = '{from_table}';
+  """).df()
+  
+  def siiDetect (detect_frame):
+    if 'sii' in detect_frame.column_name.values:
+      return True
+  
+  if siiDetect(detect_frame) == True:
+    for i in list(range(4)):
+      conn.sql(f"""
+        CREATE OR REPLACE TABLE '{new_tables[i]}' AS
+        SELECT
+          id
+          ,enroll_season
+          ,age
+          ,sex
+          ,sii
+          ,AVG(light) AS '{quartuples.index[i]}'
+        FROM 
+          '{from_table}'
+        WHERE 
+          hour_of_day BETWEEN 
+              '{quarters[quartuples.iloc[i][0]]}'::DOUBLE 
+            AND 
+              '{quarters[quartuples.iloc[i][1]]}'::DOUBLE
+        GROUP BY 
+          ALL
+        ORDER BY 
+          id ASC;""")
+    else:
+      conn.sql(f"""
+        CREATE OR REPLACE TABLE '{new_tables[i]}' AS
+        SELECT
+          id
+          ,enroll_season
+          ,age
+          ,sex
+          ,AVG(light) AS '{quartuples.index[i]}'
+        FROM 
+          '{from_table}'
+        WHERE 
+          hour_of_day BETWEEN 
+              '{quarters[quartuples.iloc[i][0]]}'::DOUBLE 
+            AND 
+              '{quarters[quartuples.iloc[i][1]]}'::DOUBLE
+        GROUP BY 
+          ALL
+        ORDER BY 
+          id ASC;""")
+          
+          
 def joinLights (from_to_tables: dict) -> None:
   
   for from_table, to_table in from_to_tables.items():
     
     new_tables = ['Light1', 'Light2', 'Light3', 'Light4']
     
+    quarters = quartiler(conn, 'hour_of_day', from_table)
+
     intermediateLighter(conn, new_tables, quarters, quartuples, from_table)
   
     conn.sql(f"CHECKPOINT;")
   
     conn.sql(f"""
-    CREATE OR REPLACE TABLE '{to_table}' AS
+    CREATE OR REPLACE TABLE {to_table} AS
     SELECT 
       l1.*
       ,l2.q1_q2
@@ -822,24 +840,44 @@ def joinLights (from_to_tables: dict) -> None:
     LEFT JOIN Light4 l4 ON l1.id = l4.id;
     """)
 
+quartuples = pd.Series(
+  data = 
+  [('min','Q1')
+  ,('Q1', 'Q2')
+  ,('Q2', 'Q3')
+  ,('Q3' ,'max')]
+  ,index =
+  ['min_q1'
+  ,'q1_q2'
+  ,'q2_q3'
+  ,'q3_max'])
+
 from_to_tables = {
   'ActigraphyTrain': 'AggregatedLights'
   ,'ActigraphyTest': 'AggregatedLightsTest'
   }
 
 joinLights(from_to_tables)
+
+```
+
+```{python}
+info_tables = conn.sql(f"Select * From information_schema.tables").df()
+```
+
+```{python}
+conn.sql(f"CHECKPOINT;")
+
+pydf = conn.sql(f"SELECT * FROM AggregatedLights LIMIT 10;").df()
 ```
 
 ```{python}
 
-lightdropList = list('Light1', 'Light2', 'Light3', 'Light4')
+lightdropList = ("Light1", "Light2", "Light3", "Light4")
 
 for lightdrop in lightdropList:
-  conn.sql(f"DROP TABLE '{lightdrop}';")
-
-conn.sql(f"CHECKPOINT;")
-
-pydf = conn.sql(f"SELECT * FROM AggregatedLights LIMIT 10;").df()
+  conn.sql(f"DROP TABLE {lightdrop};")
+  
 ```
 
 ```{r}
@@ -927,31 +965,24 @@ pyDescribe, duckSummary, duckSummary.at['sii', 'null_percentage']
 Group-averaging sii, internet use hours, and pre-averaged lux quartiles by age and sex.
 
 ```{python}
-
-conn.sql(f"""
-CREATE OR REPLACE TABLE LuxAndSiiByAgeAndSex AS
+#CREATE OR REPLACE TABLE DayQuartiles AS
+pydf = conn.sql(f"""
 SELECT
   useHrs
   ,COUNT(*) AS observations
   ,AVG(sii::INTEGER) AS sii
-  ,AVG(min_q1) AS '12am_6am_avg_lux'
-  ,AVG(q1_q2) AS '6am_12pm_avg_lux'
-  ,AVG(q2_q3) AS '12pm_6pm_avg_lux'
-  ,AVG(q3_max) AS '6pm_12am_avg_lux'
+  ,AVG(min_q1) AS 'Q1(12am_6am)'
+  ,AVG(q1_q2) AS 'Q2(6am_12pm)'
+  ,AVG(q2_q3) AS 'Q3(12pm_6pm)'
+  ,AVG(q3_max) AS 'Q4(6pm_12am)'
 FROM 
   AggregatedLights al
 GROUP BY 
-  useHrs;""")
+  useHrs;""").df()
 
-```
 
-```{python}
-
-pydf = conn.sql(f"""
-SELECT * FROM LuxAndSiiByAgeAndSex;
-""").df()
-
-luxCategories.observations.sum()
+obsSum = pydf.observations.sum()
+pydf = pydf.dropna()
 ```
 
 ```{r}
@@ -985,7 +1016,7 @@ r_plot <- ggplot(data = r_df,
   scale_fill_gradient(low = muted("yellow"), high = muted("purple")) +
   labs(title = 'Risk Categories', 
        x = 'Hours of Internet Use', 
-       y = 'Light Exposure')
+       y = "Problematic Behavior Index (sii)")   #guide_legend(title = "sii (avg)")
  # coord_flip()
 
 r_plot + ggplot_theming()
@@ -1028,10 +1059,6 @@ riskyDictionary = {
     ,f"ph.physical_waist_circumference > 40 AND al.sex = '1'")
     }
 
-```
-
-```{python}
-
 riskyDf = pd.DataFrame(data = riskyDictionary)
 
 for key, value in riskyDf.items():
@@ -1065,7 +1092,7 @@ for key, value in riskyDf.items():
   except:
     print(f"Error loading this table: {key}")
 
-conn.sql(f"""
+conn.execute(f"""
 CREATE OR REPLACE TABLE 
   DiseaseRiskDemographic AS
 SELECT * EXCLUDE(risk_cat) FROM Risk1
@@ -1077,7 +1104,7 @@ UNION BY NAME
 SELECT * EXCLUDE(risk_cat) FROM Risk4;
 """)
 
-conn.sql(f"CHECKPOINT")
+conn.execute(f"CHECKPOINT")
 ```
 
 ```{python}
@@ -1089,16 +1116,16 @@ tablesInfo = conn.sql(f"SELECT * FROM information_schema.tables;").df()
 
 ```{python}
 
-conn.sql(f"""
+conn.execute(f"""
 CREATE OR REPLACE TABLE RiskCategorySummary AS
 SELECT 
   risk_category
   ,AVG(sii::INTEGER) AS sii
-  ,AVG(useHrs) AS useHrs
-  ,AVG(min_q1) AS q1_avg_light_exposure
-  ,AVG(q1_q2) AS q2_avg_light_exposure
-  ,AVG(q2_q3) AS q3_avg_light_exposure
-  ,AVG(q3_max) AS q4_avg_light_exposure
+  ,AVG(useHrs::INTEGER) AS useHrs
+  ,AVG(min_q1) AS 'Q1_12am_6am'
+  ,AVG(q1_q2) AS 'Q2_6am_12pm'
+  ,AVG(q2_q3) AS 'Q3_12pm_6pm'
+  ,AVG(q3_max) AS 'Q4_6pm_12am'
 FROM 
   DiseaseRiskDemographic
 GROUP BY 
@@ -1108,11 +1135,13 @@ GROUP BY
 pydf = conn.execute(f"""
 SELECT 
   risk_category
-  ,AVG(min_q1) AS qLight
+  ,Q1_12am_6am
+  ,Q2_6am_12pm
+  ,Q3_12pm_6pm
+  ,Q4_6pm_12am
 FROM 
-  DiseaseRiskDemographic
-GROUP BY 
-  risk_category;""").df()
+  RiskCategorySummary;""").df()
+  
 ```
 
 ```{r}
@@ -1120,14 +1149,24 @@ GROUP BY
 
 r_df <- py$pydf
 
-notes_list =  list("The disease risk category.", "The average light exposure for Q1.")
-locations_list = list("risk_category", "qLight")
+notes_list =  list("The disease risk category.",
+                   "Mean lux Q1.",
+                   "Mean lux Q2.",
+                   "Mean lux Q3.",
+                   "Mean lux Q4.")
+
+locations_list = list("risk_category"
+                      ,"Q1_12am_6am"
+                      ,"Q2_6am_12pm"
+                      ,"Q3_12pm_6pm"
+                      ,"Q4_6pm_12am")
 
 # Create a table dataframe, or tibble, of footnotes
-footnotes_df <- tibble(notes = notes_list, locations = locations_list)
+footnotes_df <- tibble(notes = notes_list, 
+                       locations = locations_list)
 
 rTable <- r_table_theming(rDataFrame = r_df,
-                          title = "Title",
+                          title = "Disease Risk Categories to Lux",
                           subtitle = NULL,
                           footnotes_df,
                           source_note = md("**source**: Kaggle"))
@@ -1135,18 +1174,45 @@ rTable <- r_table_theming(rDataFrame = r_df,
 rTable
 ```
 
+add_glance_table
+
 ```{r}
-#| label: "ggplot example"
+library(tidyr)
+library(ggplot2)
+library(dplyr)
 
-r_plot <- ggplot(data = r_df, 
-                 mapping = aes(x = risk_category, y = qLight)
-                 ) +
-  geom_col(fill = 'skyblue') +
-  labs(title = 'Risk Categories', 
-       x = 'Category', y = 'Light Exposure') +
-  coord_flip()
+data_long <- r_df |>
+  pivot_longer(
+    cols = c(Q1_12am_6am, Q2_6am_12pm, Q3_12pm_6pm, Q4_6pm_12am),
+    names_to = "quarter",
+    values_to = "lux"
+  ) |>
+  mutate(quarter = factor(quarter, 
+                          levels = c("Q1_12am_6am",
+                                     "Q2_6am_12pm",
+                                     "Q3_12pm_6pm",
+                                     "Q4_6pm_12am")))
 
-r_plot + ggplot_theming_flipped_axes()
+data_long
+```
+
+```{r}
+#| label: ""
+
+r_plot <- ggplot(data= data_long, 
+                 aes(x = quarter, 
+                     y = lux, 
+                     group = risk_category, 
+                     color = risk_category)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  labs(title = "Light Exposure by Risk Category and Time Period",
+       x = "Time Period",
+       y = "Mean Lux Value",
+       color = "Risk Category")
+
+r_plot + ggplot_theming()
+
 ```
 
 ## Close Connection
