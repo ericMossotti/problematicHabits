@@ -38,6 +38,11 @@ Is the quantity of internet activity itself truly determinant of negative outcom
 #### Tables
 
 ```{r}
+
+
+```
+
+```{r}
 #| label: "r_table_theming()"
 #| code-summary: "x"
 # https://emilhvitfeldt.github.io/paletteer/
@@ -46,26 +51,53 @@ library(gt)
 library(purrr)
 library(tibble)
 library(reticulate)
+library(paletteer)
 
-r_table_theming <- function(rDataFrame,
+# if (is.function(palette_name)) {return(palette_name(n, option)){}
+eval_palette <- function(palette_name, n = 10, pal_type) {
+  
+  if (pal_type == "c") {
+    return(paletteer_c(palette_name, n = n))
+    } else if (pal_type == "d") {
+      return(paletteer_d(palette_name, n = n))
+    } else if (pal_type == "dynamic") {
+      return(paletteer_dynamic(palette_name, n = n))
+    }
+}
+
+r_table_theming <- function(r_df,
                             title,
                             subtitle,
                             footnotes_df,
-                            source_note) {
-  r_table <- gt(rDataFrame) |>
-    data_color(palette = "ggsci::legacy_tron",
-               columns = footnotes_df$locations[[1]],
-               target_columns = everything()) |>
+                            source_note,
+                            pal_df) {
+  
+  r_table <- gt(r_df)
+  
+  r_table <- seq_len(nrow(pal_df)) |>
+    reduce(\(acc, i) {
+      data_color(
+        acc,
+        palette = pal_df$pals[[i]],
+        columns = pal_df$cols[[i]]
+        #target_columns = gt::everything()
+        )
+      },.init = r_table)
+  
+  r_table <- r_table |>
     tab_header(title = title, subtitle = subtitle)
   
   r_table <- r_table |>
       tab_options(
         heading.background.color = '#222',
         column_labels.background.color = '#333',
-        #table.background.color = '#222',
+        table.background.color = '#222',
         footnotes.background.color = '#222',
-        source_notes.background.color = '#222'
-        )
+        source_notes.background.color = '#222',
+        row.striping.include_table_body	= TRUE,
+        row.striping.background_color = '#333')
+        #row.striping.include_stub = TRUE
+        #row_group.as_column = TRUE,
     
     r_table <- r_table |>
       tab_source_note(source_note = source_note)
@@ -128,6 +160,7 @@ ggplot_theming <- function() {
       legend.text = element_text(color = 'gray'),
       legend.title = element_text(color = 'white'))
   }
+
 ```
 
 ## Import/Extract
@@ -173,7 +206,8 @@ if not os.path.exists('./data/train.csv'):
 else:
   print("Files already exist", sep = "\n"*2)
 
-extracts = pd.DataFrame(data = os.listdir('./data'), columns = ['./data'])
+extracts = pd.DataFrame(
+  data = os.listdir(path = './data'), columns = ['./data'])
 
 ```
 
@@ -191,7 +225,8 @@ rTable <- r_table_theming(rDataFrame = r_df,
                           title = "Directory Files",
                           subtitle = NULL,
                           footnotes_df,
-                          source_note = md("**source**: './data'"))
+                          source_note = md("**source**: './data'"),
+                          palette = "ggsci::legacy_tron")
 
 rTable
 ```
@@ -426,10 +461,6 @@ parquetDict = {
 try:
   setup_duckdb_pipeline(csvDict, parquetDict, conn)
   conn.sql(f"CHECKPOINT;")
-  pydf = conn.sql(f"""
-  SELECT *
-  FROM ActigraphyTrain
-  LIMIT 10;""").df()
 except:
   print(f"Could not set up data pipeline.")
   
@@ -439,12 +470,21 @@ except:
 pydf = conn.sql(f"""
 SELECT *
 FROM ActigraphyTrain
-ORDER BY ALL
+ORDER BY 
+  id ASC
+  ,relative_date_PCIAT ASC
+  ,hour_of_day ASC
 LIMIT 10;""").df()
 ```
 
 ```{r}
 #| label: tbl-ActigraphyTrain
+
+library(tibble)
+library(harrypotter)
+library(paletteer)
+# paletteer_d(palette = "basetheme::deepblue")
+# palette = paletteer::paletteer_c("scico::berlin", 100)
 
 r_df <- py$pydf
 
@@ -465,22 +505,49 @@ locations_list = list("id",
                       "relative_date_PCIAT")
 
 # Create a table data-frame, or tibble, of footnotes
-footnotes_df <- tibble(notes = notes_list, 
-                       locations = locations_list)
+footnotes_df <- tibble(
+  notes = notes_list, 
+  locations = locations_list
+  )
 
-rTable <- r_table_theming(rDataFrame = r_df,
+pal_df <- tibble(
+  cols = list(
+    'id', 
+    'quarter', 
+    'weekday', 
+    'relative_date_PCIAT', 
+    'light', 
+    'hour_of_day'),
+  pals = list(
+    'green',
+    'blue',
+    'orange',
+    'yellow',
+    eval_palette("harrypotter::hufflepuff", 10, 'c'),
+    eval_palette("harrypotter::ravenclaw", 10, 'c')
+    )
+  )
+
+rTable <- r_table_theming(r_df,
                           title = "Actigraphy Data - Training Set",
                           subtitle = NULL,
                           footnotes_df,
-                          source_note = md("**source**: Kaggle"))
+                          source_note = md("**source**: Kaggle"),
+                          pal_df
+                          )
 
 rTable
+
+```
+
+```{r}
+
 ```
 
 ### Overview
 
 ```{python}
-info_tables = conn.sql(f"Select * From main.duckdb_tables").df()
+info_tables = conn.sql(f"Select * From main.duckdb_tables;").df()
 ```
 
 ```{python}
@@ -519,7 +586,37 @@ for key, value in summary_frame.items():
 
 Might be useful: Visualize summary data
 
+```{python}
 
+
+
+```
+
+```{r}
+# cols_hide()
+# from_column()
+
+grp_names = c('id', 'quarter', 'weekday')
+
+rDataFrame <- r_df |>
+  dplyr::group_by(dplyr::across(dplyr::all_of(grp_names)))
+
+r_table <- gt(r_df, groupname_col = 'id', row_group_as_column = TRUE) |>
+  data_color(palette = paletteer::paletteer_d("nord::frost"),
+             columns = 'relative_date_PCIAT',
+             target_columns = gt::everything()
+             ) |>
+  gt::tab_style(
+    style = list(
+      cell_fill(from_column())
+    ),
+    locations = cells_body(columns = c('quarter', 'weekday', 'relative_date_PCIAT'))
+    )|>
+  tab_header(title = 'title', subtitle = 'subtitle')
+
+r_table
+
+```
 
 ## Machine Learning Models
 
@@ -562,12 +659,12 @@ def build_preprocessor(numeric_cols: list, cat_cols: list) -> ColumnTransformer:
 def execute_numeric_query(conn, table_name: str) -> pd.DataFrame:
   query = f"""
   SELECT id
-         .COALESCE(AVG(CAST(basic_demos_age AS FLOAT)), 0) AS age
-         .COALESCE(AVG(CAST(cgas_cgas_score AS FLOAT)), 0) AS cgas
-         .COALESCE(AVG(CAST(physical_bmi AS FLOAT)), 0) AS bmi
-         .COALESCE(AVG(CAST(physical_height AS FLOAT)), 0) AS height
-         .COALESCE(AVG(CAST(physical_weight AS FLOAT)), 0) AS weight
-         .COALESCE(AVG(CAST(physical_heartrate AS FLOAT)), 0) AS heartrate
+         ,COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age
+         ,COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas
+         ,COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi
+         ,COALESCE(AVG(physical_height::FLOAT), 0) AS height
+         ,COALESCE(AVG(physical_weight::FLOAT), 0) AS weight
+         ,COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate
   FROM {table_name}
   GROUP BY id;
   """
@@ -576,11 +673,11 @@ def execute_numeric_query(conn, table_name: str) -> pd.DataFrame:
 def execute_ts_query(conn, table_name: str) -> pd.DataFrame:
     query = f"""
     SELECT id
-           ,COALESCE(AVG(CAST(light AS FLOAT)), 0) AS light_mean
-           ,COALESCE(STDDEV(CAST(light AS FLOAT)), 0) AS light_std
-           ,COALESCE(MAX(CAST(light AS FLOAT)), 0) AS light_max
-           ,COALESCE(AVG(CAST(hour_of_day AS FLOAT)), 0) AS hour_mean
-           ,COALESCE(STDDEV(CAST(hour_of_day AS FLOAT)), 0) AS hour_std
+           ,COALESCE(AVG(light::FLOAT), 0) AS light_mean
+           ,COALESCE(STDDEV(light::FLOAT), 0) AS light_std
+           ,COALESCE(MAX(light::FLOAT), 0) AS light_max
+           ,COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean
+           ,COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std
            ,COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday
            ,COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
     FROM {table_name}
@@ -612,7 +709,13 @@ def load_and_merge_data(
                  .merge(cat_df, on = 'id', how = 'left'))
     
     if dataset_type == 'train' and target_col:
-        target_query = f"SELECT id, {target_col} FROM {table_name} GROUP BY id, {target_col};"
+        target_query = f"""
+        SELECT id, {target_col} 
+        FROM 
+          {table_name} 
+        GROUP BY 
+          id, {target_col};"""
+          
         targets = conn.execute(target_query).df()
         merged_df = merged_df.merge(targets, on = 'id', how = 'left')
     
@@ -630,19 +733,20 @@ def prepare_data(
     'heartrate', 'light_mean', 'light_std', 
     'light_max', 'hour_mean', 'hour_std']
     
-    cat_cols = ['basic_demos_enroll_season', 'basic_demos_sex', 'common_weekday', 'common_quarter']
+    cat_cols = ['basic_demos_enroll_season', 'basic_demos_sex', 
+    'common_weekday', 'common_quarter']
     
     # Drop rows with missing target values in training data
     if target_col and dataset_type == 'train':
-        df = df.dropna(subset=[target_col])
+        df = df.dropna(subset = [target_col])
     
     if preprocessor is None:
       preprocessor = build_preprocessor(numeric_cols, cat_cols)
       X = preprocessor.fit_transform(
-        df.drop(columns = ['id', target_col], errors='ignore'))
+        df.drop(columns = ['id', target_col], errors = 'ignore'))
     else:
         X = preprocessor.transform(
-          df.drop(columns = ['id', target_col], errors='ignore'))
+          df.drop(columns = ['id', target_col], errors = 'ignore'))
     
     y = df[target_col].values if target_col and dataset_type == 'train' else None
     return X, y, preprocessor
@@ -735,16 +839,16 @@ def save_model(
   model: lgb.Booster, 
   preprocessor, lgb_params: Dict[str, Any], 
   path: str):
-  model.save_model(f"{path}_model.txt")
+  model.save_model(f"{path}/model.txt")
   
-  with open(f"{path}_preprocessor.pkl", 'wb') as f:
+  with open(f"{path}/preprocessor.pkl", 'wb') as f:
     joblib.dump(preprocessor, f)
-  with open(f"{path}_params.json", 'w') as f:
+  with open(f"{path}/params.json", 'w') as f:
     json.dump(lgb_params, f)
 
 
 def load_preprocessor(path: str):
-  with open(f"{path}_preprocessor.pkl", 'rb') as f:
+  with open(f"{path}/preprocessor.pkl", 'rb') as f:
     return joblib.load(f)
 
 ```
@@ -779,7 +883,7 @@ lgb_params = {
 
 # Cross-validation
 cv_results, cv_summary = cross_validate(
-  conn, target_col, lgb_params, n_splits=5)
+  conn, target_col, lgb_params, n_splits = 5)
 print(cv_summary)
 
 # Train final model
@@ -789,17 +893,15 @@ final_model, preprocessor = train_final_model(
 # Evaluate on test data
 test_predictions = evaluate_test_data(
   conn, final_model, preprocessor)
-print(test_predictions.head())
+print(test_predictions)
 
 # Save model
 save_model(
-  final_model, preprocessor, lgb_params, "models_path")
+  final_model, preprocessor, lgb_params, "data/models")
 
 ```
 
-
 ## Parameter Tables
-
 
 ```{python}
 #| label: "create_table_with_regex_columns()"
@@ -858,9 +960,8 @@ def create_table_with_regex_columns(
 
 # It'd be useful to get the data types for creating a new table of values
 coltype_overview = conn.execute(f"""
-  SELECT 
-    column_name
-    ,data_type
+  SELECT column_name
+         ,data_type
   FROM 
     information_schema.columns
   WHERE 
@@ -925,12 +1026,11 @@ conn.sql(f"DROP TABLE TestCsv;")
 
 conn.execute(f"""
 CREATE OR REPLACE TABLE IntermediateActigraphy AS
-SELECT
-  id
-  ,basic_demos_enroll_season::TEXT::enroll_season_enum AS enroll_season
-  ,basic_demos_age::TEXT::age_enum AS age
-  ,basic_demos_sex::TEXT AS sex
-  ,sii::INTEGER::TEXT::sii_enum AS sii
+SELECT id
+       ,basic_demos_enroll_season::TEXT::enroll_season_enum AS enroll_season
+       ,basic_demos_age::TEXT::age_enum AS age
+       ,basic_demos_sex::TEXT AS sex
+       ,sii::INTEGER::TEXT::sii_enum AS sii
 FROM 
   Demographic
 ORDER BY
@@ -990,34 +1090,6 @@ conn.execute(f"CHECKPOINT;")
 
 ```
 
-```{python}
-#show(max_width=100)
-with  open(
-  "./data/profiles/actigraphy_train_profile.csv", 'w', encoding="utf-8") as outfile:
-    with contextlib.redirect_stdout(outfile):
-      x = conn.sql(f"SUMMARIZE SELECT * FROM ActigraphyTrain;").df()
-      conn.execute(f"""
-      COPY 
-        {x} 
-      TO  
-        './data/profiles/actigraphy_train_profile.csv' 
-      (HEADER , DELIMITER ',') 
-      """)
-      
-      print(x)
-
-```
-
-```{python}
-conn.execute(f"COPY {x} TO '/data/profiles/actigraphy_train_profile.csv' (HEADER , DELIMITER ',');")
-```
-
-```{python}
-x = conn.sql(f"SUMMARIZE SELECT * FROM ActigraphyTrain;").df(max_width=100)
-
-x
-```
-
 ### Data Model Schematic
 
 ::: column-screen-inset
@@ -1053,7 +1125,7 @@ BMI Risk Categories [@zierle-ghosh_physiology_2024].
 
 Lux Exposure Categories [@noauthor_lux_nodate].
 
-### Quartiles of light exposure by hour of day
+### Quartile of Lux by Hour of Day
 
 ```{python}
 #| label: "intermediateLighter()"
@@ -1773,8 +1845,4 @@ LIMIT
   10;""").df()
   
 pydf
-```
-
-```{python}
-
 ```
