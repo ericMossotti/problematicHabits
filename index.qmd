@@ -38,14 +38,10 @@ Is the quantity of internet activity itself truly determinant of negative outcom
 #### Tables
 
 ```{r}
-
-
-```
-
-```{r}
 #| label: "r_table_theming()"
-#| code-summary: "x"
+#| code-summary: "Relatively hard-core table formatting code."
 # https://emilhvitfeldt.github.io/paletteer/
+# https://gt.rstudio.com
 
 library(gt)
 library(purrr)
@@ -54,14 +50,13 @@ library(reticulate)
 library(paletteer)
 
 # if (is.function(palette_name)) {return(palette_name(n, option)){}
-eval_palette <- function(palette_name, n = 10, pal_type) {
-  
+eval_palette <- function(pal_name, n = 10, pal_type, direction = NULL) {
   if (pal_type == "c") {
-    return(paletteer_c(palette_name, n = n))
+    return(paletteer_c(pal_name, n, direction))
     } else if (pal_type == "d") {
-      return(paletteer_d(palette_name, n = n))
+      return(paletteer_d(pal_name, n, direction))
     } else if (pal_type == "dynamic") {
-      return(paletteer_dynamic(palette_name, n = n))
+      return(paletteer_dynamic(pal_name, n, direction))
     }
 }
 
@@ -88,19 +83,18 @@ r_table_theming <- function(r_df,
     tab_header(title = title, subtitle = subtitle)
   
   r_table <- r_table |>
-      tab_options(
-        heading.background.color = '#222',
-        column_labels.background.color = '#333',
-        table.background.color = '#222',
-        footnotes.background.color = '#222',
-        source_notes.background.color = '#222',
-        row.striping.include_table_body	= TRUE,
-        row.striping.background_color = '#333')
-        #row.striping.include_stub = TRUE
-        #row_group.as_column = TRUE,
-    
-    r_table <- r_table |>
-      tab_source_note(source_note = source_note)
+    tab_options(
+      heading.background.color = '#222',
+      column_labels.background.color = '#333',
+      table.background.color = '#222',
+      footnotes.background.color = '#222',
+      source_notes.background.color = '#222',
+      row.striping.include_table_body	= TRUE,
+      row.striping.background_color = '#333'
+      )
+  
+  r_table <- r_table |>
+    tab_source_note(source_note = source_note)
 
   # Footnotes are added to the accumulator, building up to the final result
   r_table <- seq_len(nrow(footnotes_df)) |>
@@ -113,8 +107,22 @@ r_table_theming <- function(r_df,
         )
       }, .init = r_table)
   
+  if(ncol(r_df) > 1) {
+    
+    cell_col_fills = pal_df$pals[[1]]
+    
+    r_table <- seq_len(nrow(pal_df)) |>
+      reduce(\(acc, i) {
+        tab_style(
+          acc,
+          style = cell_fill(
+            color = cell_col_fills[i]
+            ), locations = cells_column_labels(columns = pal_df$cols[[i]]))
+        }, .init = r_table)
+  }
+
   return(r_table)
-}
+  }
 
 ```
 
@@ -122,28 +130,12 @@ r_table_theming <- function(r_df,
 
 ```{r}
 #| label: "ggplot_theming()"
-#| eval: true
+#| code-summary: "Hard-core plot theme code."
 
 library(reticulate)
 library(ggplot2)
 
-ggplot_theming_flipped_axes <- function() {
-  theme_linedraw() +
-    theme(
-      plot.title = element_text(color = 'white'),
-      plot.background = element_rect(fill = '#222'),
-      panel.background = element_rect(fill = '#222'),
-      panel.grid.major.x = element_line(linetype = 'dashed'),
-      panel.grid.minor.x = element_line(linetype = "dotted"),
-      panel.grid.major.y = element_line(linetype = 'solid'),
-      panel.grid.minor.y = element_line(linetype = 'dotted'),
-      axis.title = element_text(color = 'gray100'),
-      axis.text = element_text(color = 'gray'),
-      legend.background = element_rect(fill = '#222'),
-      legend.text = element_text(color = 'gray'),
-      legend.title = element_text(color = 'white'))
-}
-
+# NORMAL AXES
 ggplot_theming <- function() {
   theme_linedraw() +
     theme(
@@ -161,30 +153,38 @@ ggplot_theming <- function() {
       legend.title = element_text(color = 'white'))
   }
 
+# FLIPPED AXES
+ggplot_theming_flipped_axes <- function() {
+  theme_linedraw() +
+    theme(
+      plot.title = element_text(color = 'white'),
+      plot.background = element_rect(fill = '#222'),
+      panel.background = element_rect(fill = '#222'),
+      panel.grid.major.x = element_line(linetype = 'dashed'),
+      panel.grid.minor.x = element_line(linetype = "dotted"),
+      panel.grid.major.y = element_line(linetype = 'solid'),
+      panel.grid.minor.y = element_line(linetype = 'dotted'),
+      axis.title = element_text(color = 'gray100'),
+      axis.text = element_text(color = 'gray'),
+      legend.background = element_rect(fill = '#222'),
+      legend.text = element_text(color = 'gray'),
+      legend.title = element_text(color = 'white'))
+}
+
 ```
 
 ## Import/Extract
 
 ```{python}
+#| label: "mass import"
 #| eval: false
 !kaggle competitions download -c child-mind-institute-problematic-internet-use
 ```
 
 ```{python}
-#| label: "mass import"
-
-from zipfile import ZipFile
-import os
-import duckdb
-import pandas as pd
-import re
-from pandas.io.formats.style import Styler
-import numpy as np
-```
-
-```{python}
 #| label: "makeDir"
 #| code-summary: "Check if the directory, 'data', exists."
+import os
 
 try:
   os.mkdir('./data')
@@ -196,6 +196,9 @@ except FileExistsError:
 #| label: tbl-unzipping
 #| tbl-cap: "unzippers"
 #| code-summary: "Extracts the files and lists files."
+
+from zipfile import ZipFile
+import pandas as pd
 
 zip_path = "child-mind-institute-problematic-internet-use.zip"
 
@@ -215,18 +218,26 @@ extracts = pd.DataFrame(
 
 r_df <- py$extracts
 
-notes_list =  list("./data directory file list")
+notes_list =  list("directory contents")
 locations_list = list("./data")
 
 # Create a table dataframe, or tibble, of footnotes
 footnotes_df <- tibble(notes = notes_list, locations = locations_list)
 
-rTable <- r_table_theming(rDataFrame = r_df,
+pal_df <- tibble(
+  cols = list(
+  "./data"),
+  pals = list(
+    eval_palette("ggsci::legacy_tron", 7, 'd', 1)
+    )
+  )
+
+rTable <- r_table_theming(r_df,
                           title = "Directory Files",
                           subtitle = NULL,
                           footnotes_df,
-                          source_note = md("**source**: './data'"),
-                          palette = "ggsci::legacy_tron")
+                          source_note = md("**source**: '/data/'"),
+                          pal_df)
 
 rTable
 ```
@@ -234,6 +245,9 @@ rTable
 ### Establish a Database Connection
 
 ```{python}
+import duckdb
+
+
 conn = duckdb.connect(':memory:')
 conn.sql(f"SET memory_limit = '24GB';")
 conn.sql(f"SET default_order = 'ASC';")
@@ -246,6 +260,8 @@ I noticed that using ENUM data types significantly sped up many database operati
 ```{python}
 #| label: "enum_series_to_dict"
 #| code-summary: "Defines the series and dictionary objects for enum functions."
+
+import pandas as pd
 
 enums = ['internet_hours_enum'
          ,'enroll_season_enum'
@@ -354,18 +370,18 @@ for e in enums:
    droplist.append(try_drop(conn, type_str = e))
    
 dropFrame = pd.DataFrame(droplist)
-dropFrame = dropFrame.sort_values(by = dropFrame.columns.to_list()
-                                  ,ascending=True
-                                  ,ignore_index=True)
+dropFrame = dropFrame.sort_values(by = dropFrame.columns.to_list(),
+                                  ascending = True,
+                                  ignore_index = True)
 createList = []
 for eType, eSeries in enumDict.items():
-    createList.append(try_create(conn
-                                 ,type_str = eType
-                                 ,enum_str = eSeries))
+    createList.append(try_create(conn,
+                                 type_str = eType,
+                                 enum_str = eSeries))
 createFrame = pd.DataFrame(createList)
-createFrame = createFrame.sort_values(by = createFrame.columns.to_list()
-                                      ,ascending=True
-                                      ,ignore_index=True)
+createFrame = createFrame.sort_values(by = createFrame.columns.to_list(),
+                                      ascending = True,
+                                      ignore_index = True)
 
 pd.concat([dropFrame, createFrame], axis = 1)
 ```
@@ -467,6 +483,7 @@ except:
 ```
 
 ```{python}
+
 pydf = conn.sql(f"""
 SELECT *
 FROM ActigraphyTrain
@@ -480,13 +497,11 @@ LIMIT 10;""").df()
 ```{r}
 #| label: tbl-ActigraphyTrain
 
-library(tibble)
-library(harrypotter)
-library(paletteer)
-# paletteer_d(palette = "basetheme::deepblue")
-# palette = paletteer::paletteer_c("scico::berlin", 100)
 
 r_df <- py$pydf
+
+r_df <- r_df |>
+  dplyr::select(id, quarter, weekday, relative_date_PCIAT, light, hour_of_day)
 
 notes_list =  list(
   "Unique participant identifier code, to track related data from actigraphy to hbn datasets.",
@@ -519,12 +534,12 @@ pal_df <- tibble(
     'light', 
     'hour_of_day'),
   pals = list(
-    'green',
-    'blue',
-    'orange',
-    'yellow',
-    eval_palette("harrypotter::hufflepuff", 10, 'c'),
-    eval_palette("harrypotter::ravenclaw", 10, 'c')
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1)
     )
   )
 
@@ -537,11 +552,6 @@ rTable <- r_table_theming(r_df,
                           )
 
 rTable
-
-```
-
-```{r}
-
 ```
 
 ### Overview
@@ -580,325 +590,471 @@ for key, value in summary_frame.items():
 
   conn.sql(
     f"COPY {value[0]} TO '{value[1]}' (HEADER , DELIMITER ',');")  
-  
-  #conn.unregister(value[0])
+
 ```
 
 Might be useful: Visualize summary data
 
 ```{python}
 
-
-
+pydf = conn.sql(f"""
+SELECT *
+FROM ActigraphyTrainSummary;""").df()
+pydf
 ```
 
 ```{r}
-# cols_hide()
-# from_column()
+library(tibble)
+library(harrypotter)
+library(paletteer)
 
-grp_names = c('id', 'quarter', 'weekday')
+r_df <- py$pydf
 
-rDataFrame <- r_df |>
-  dplyr::group_by(dplyr::across(dplyr::all_of(grp_names)))
+r_df <- r_df |>
+  dplyr::select(id, quarter, weekday, relative_date_PCIAT, light, hour_of_day)
 
-r_table <- gt(r_df, groupname_col = 'id', row_group_as_column = TRUE) |>
-  data_color(palette = paletteer::paletteer_d("nord::frost"),
-             columns = 'relative_date_PCIAT',
-             target_columns = gt::everything()
-             ) |>
-  gt::tab_style(
-    style = list(
-      cell_fill(from_column())
-    ),
-    locations = cells_body(columns = c('quarter', 'weekday', 'relative_date_PCIAT'))
-    )|>
-  tab_header(title = 'title', subtitle = 'subtitle')
+notes_list =  list(
+  "Unique participant identifier code, to track related data from actigraphy to hbn datasets.",
+  "Annual quarter related to month of observation.",
+  "Day of the week (Monday = 1)",
+  "Light exposure, measured in 'lux'",
+  "24-hour time converted to a float for easier conversion for time-series analysis.",
+  "Days since questionairre, also convenient to help order daily values for time-series analysis."
+  )
 
-r_table
+locations_list = list("id",
+                      "quarter",
+                      "weekday",
+                      "light",
+                      "hour_of_day",
+                      "relative_date_PCIAT")
+
+# Create a table data-frame, or tibble, of footnotes
+footnotes_df <- tibble(
+  notes = notes_list, 
+  locations = locations_list
+  )
+
+pal_df <- tibble(
+  cols = list(
+    'id', 
+    'quarter', 
+    'weekday', 
+    'relative_date_PCIAT', 
+    'light', 
+    'hour_of_day'),
+  pals = list(
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1)
+    )
+  )
+
+rTable <- r_table_theming(r_df,
+                          title = "Actigraphy Data - Training Set",
+                          subtitle = NULL,
+                          footnotes_df,
+                          source_note = md("**source**: Kaggle"),
+                          pal_df
+                          )
+
+rTable
 
 ```
 
 ## Machine Learning Models
 
+Key Parameters in lgb_params
+
+Since `sii` is a multi-class categorical variable, the task is a classification problem. Adjusting the `lgb_params`, evaluation metrics, and handling predictions as outlined above ensures the model correctly interprets and solves the problem.
+
+**Categorical target (sii)**:
+
+When the target is discrete (as in the case for sii, or, 'Severity Impairment Index'), it indicates a classification problem. A classification objective and corresponding evaluation metrics (e.g., accuracy, log loss) might be appropriate.
+
+1.  **`objective`: `'multiclass'`**
+
+    -   Specifies the learning objective of the model.
+
+    -   `'multiclass'` is used when the target variable is categorical with more than two classes.
+
+    -   Since the target variable (`sii`) has four possible values (0, 1, 2, 3), this is the appropriate choice.
+
+2.  **`metric`: `'multi_logloss'`**
+
+    -   Metric used to evaluate the model's performance during training.
+
+    -   `'multi_logloss'` (Multi-class Logarithmic Loss) measures how well the predicted probability distributions match the actual class labels.
+
+    -   Lower values indicate better performance. It's commonly used for classification tasks.
+
+3.  **`num_class`: `4`**
+
+    -   Specifies the number of unique classes in the target variable.
+
+    -   Since `sii` has four possible values (0, 1, 2, 3), `num_class` is set to `4`.
+
+4.  **`num_leaves`**
+
+    -   **Purpose**: Determines the complexity of the trees.
+
+    -   **Value**: `31`
+
+        -   Higher values allow the model to capture more interactions between features but can lead to overfitting if too high.
+
+        -   A smaller value may be used for simpler problems or to prevent overfitting.
+
+5.  **`learning_rate`**
+
+    -   **Purpose**: The step size for updating model weights during training.
+
+    -   **Value**: `0.05`
+
+        -   A smaller value makes the model learn slowly, often improving generalization.
+
+        -   If one lowers `learning_rate`, they may need to increase `num_boost_round` (number of training iterations).
+
+6.  **`feature_fraction`**
+
+    -   **Purpose**: The proportion of features to randomly sample for each iteration of training.
+
+    -   **Value**: `0.9`
+
+        -   Prevents overfitting by forcing the model to rely on different subsets of features.
+
+        -   A value close to 1 means most features are used, while smaller values increase regularization.
+
+7.  **`bagging_fraction`**
+
+    -   **Purpose**: The proportion of training samples to randomly sample for each iteration of training.
+
+    -   **Value**: `0.8`
+
+        -   Similar to `feature_fraction`, but applied to the training data.
+
+        -   Helps the model generalize better by using only a subset of the data.
+
+8.  **`bagging_freq`**
+
+    -   **Purpose**: The frequency (in terms of iterations) at which bagging (random sampling) is applied.
+
+    -   **Value**: `5`
+
+        -   Bagging is applied every 5 iterations.
+
+        -   A value of `0` disables bagging.
+
+9.  **`verbose`**
+
+    -   **Purpose**: Controls the verbosity of the training process.
+
+    -   **Value**: `-1`
+
+        -   Suppresses output unless there's an error.
+
+        -   A value of `1` or `2` provides more detailed output during training.
+
 ```{python}
-#| label: "mlModel"
-#| code-summary: "An attempt at predictive modeling with ML."
+
+model_out = f"./data/model_output"
+
+try:
+  os.mkdir(model_out)
+except FileExistsError:
+  print(f"data/model_output exists")
+
+```
+
+```{python}
+
+sii_model_out = f"./data/model_output/sii_model"
+
+try:
+  os.mkdir(sii_model_out)
+except FileExistsError:
+  print(f"data/model_output/sii_model exists")
+
+```
+
+### New ML
+
+```{python}
+#| label: "MLpipeline"
+#| code-summary: "Statistical modeling with machine learning models."
 
 import duckdb
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, accuracy_score, log_loss
 import lightgbm as lgb
 import joblib
 import json
-from typing import Tuple, Dict, Any
+from typing import Dict, Any, Tuple
+import random
 
-# Define preprocessor builder function
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
+# Set random seeds for reproducibility
+SEED = 14
+np.random.seed(SEED)
+random.seed(SEED)
 
-def build_preprocessor(numeric_cols: list, cat_cols: list) -> ColumnTransformer:
-  """
-  Build a preprocessing pipeline for numeric and categorical features.
-  """
-  return ColumnTransformer([
-      ('num', Pipeline([
-          ('imputer', SimpleImputer(strategy = 'mean')),
-          ('scaler', StandardScaler())
-      ]), numeric_cols),
-      ('cat', Pipeline([
-          ('imputer', SimpleImputer(strategy = 'most_frequent')),
-          ('encoder', OneHotEncoder(drop = 'first', sparse_output = False))
-      ]), cat_cols)
-  ])
-
-# Functions for querying DuckDB tables
-def execute_numeric_query(conn, table_name: str) -> pd.DataFrame:
-  query = f"""
-  SELECT id
-         ,COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age
-         ,COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas
-         ,COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi
-         ,COALESCE(AVG(physical_height::FLOAT), 0) AS height
-         ,COALESCE(AVG(physical_weight::FLOAT), 0) AS weight
-         ,COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate
-  FROM {table_name}
-  GROUP BY id;
-  """
-  return conn.execute(query).df()
-
-def execute_ts_query(conn, table_name: str) -> pd.DataFrame:
-    query = f"""
-    SELECT id
-           ,COALESCE(AVG(light::FLOAT), 0) AS light_mean
-           ,COALESCE(STDDEV(light::FLOAT), 0) AS light_std
-           ,COALESCE(MAX(light::FLOAT), 0) AS light_max
-           ,COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean
-           ,COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std
-           ,COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday
-           ,COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
-    FROM {table_name}
-    GROUP BY id;
-    """
-    return conn.execute(query).df()
-
-def execute_cat_query(conn, table_name: str) -> pd.DataFrame:
-    query = f"""
-    SELECT DISTINCT id
-                    ,basic_demos_enroll_season
-                    ,basic_demos_sex
-    FROM {table_name};
-    """
-    return conn.execute(query).df()
-
-# Merging features into a unified DataFrame
+# Function to load and merge data
 def load_and_merge_data(
-  conn, dataset_type: str, target_col: str = None) -> pd.DataFrame:
-    table_name = 'TrainCsv' if dataset_type == 'train' else 'TestCsv'
-    ts_table_name = 'ActigraphyTrain' if dataset_type == 'train' else 'ActigraphyTest'
-    
-    numeric_df = execute_numeric_query(conn, table_name)
-    ts_df = execute_ts_query(conn, ts_table_name)
-    cat_df = execute_cat_query(conn, table_name)
-    
-    merged_df = (numeric_df
-                 .merge(ts_df, on = 'id', how = 'left')
-                 .merge(cat_df, on = 'id', how = 'left'))
-    
-    if dataset_type == 'train' and target_col:
-        target_query = f"""
-        SELECT id, {target_col} 
-        FROM 
-          {table_name} 
-        GROUP BY 
-          id, {target_col};"""
-          
-        targets = conn.execute(target_query).df()
-        merged_df = merged_df.merge(targets, on = 'id', how = 'left')
-    
-    return merged_df
-
-def prepare_data(
-  conn, 
-  dataset_type: str, 
-  target_col: str = None, 
-  preprocessor = None) -> Tuple[np.ndarray, np.ndarray, ColumnTransformer]:
-    
-    df = load_and_merge_data(conn, dataset_type, target_col)
-    
-    numeric_cols = ['age', 'cgas', 'bmi', 'height', 'weight', 
-    'heartrate', 'light_mean', 'light_std', 
-    'light_max', 'hour_mean', 'hour_std']
-    
-    cat_cols = ['basic_demos_enroll_season', 'basic_demos_sex', 
-    'common_weekday', 'common_quarter']
-    
-    # Drop rows with missing target values in training data
-    if target_col and dataset_type == 'train':
-        df = df.dropna(subset = [target_col])
-    
-    if preprocessor is None:
-      preprocessor = build_preprocessor(numeric_cols, cat_cols)
-      X = preprocessor.fit_transform(
-        df.drop(columns = ['id', target_col], errors = 'ignore'))
+  conn: duckdb.DuckDBPyConnection, 
+  dataset_type: str) -> pd.DataFrame:
+    """
+    Load, aggregate, and merge data for a specified dataset type 
+    ('train' or 'test').
+    """
+    if dataset_type == 'train':
+        query = """
+        WITH TrainBase AS (
+            SELECT id,
+                   COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
+                   COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
+                   COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
+                   COALESCE(AVG(physical_height::FLOAT), 0) AS height,
+                   COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
+                   COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate,
+                   COALESCE(MAX(sii::INTEGER), 0) AS sii -- Target column
+            FROM TrainCsv
+            GROUP BY id
+        ),
+        TrainActivity AS (
+            SELECT id,
+                   COALESCE(AVG(light::FLOAT), 0) AS light_mean,
+                   COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
+                   COALESCE(MAX(light::FLOAT), 0) AS light_max,
+                   COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
+                   COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
+                   COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday,
+                   COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
+            FROM ActigraphyTrain
+            GROUP BY id
+        )
+        SELECT *
+        FROM TrainBase
+        LEFT JOIN TrainActivity USING (id);
+        """
+    elif dataset_type == 'test':
+        query = """
+        WITH TestBase AS (
+            SELECT id,
+                   COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
+                   COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
+                   COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
+                   COALESCE(AVG(physical_height::FLOAT), 0) AS height,
+                   COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
+                   COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate
+            FROM TestCsv
+            GROUP BY id
+        ),
+        TestActivity AS (
+            SELECT id,
+                   COALESCE(AVG(light::FLOAT), 0) AS light_mean,
+                   COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
+                   COALESCE(MAX(light::FLOAT), 0) AS light_max,
+                   COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
+                   COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
+                   COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday,
+                   COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
+            FROM ActigraphyTest
+            GROUP BY id
+        )
+        SELECT *
+        FROM TestBase
+        LEFT JOIN TestActivity USING (id);
+        """
     else:
-        X = preprocessor.transform(
-          df.drop(columns = ['id', target_col], errors = 'ignore'))
+        raise ValueError("Invalid dataset_type. Must be 'train' or 'test'.")
     
-    y = df[target_col].values if target_col and dataset_type == 'train' else None
-    return X, y, preprocessor
+    return conn.execute(query).df()
 
+# Data preparation function
+def prepare_data(
+  conn: duckdb.DuckDBPyConnection, 
+  dataset_type: str, 
+  target_col: str = None) -> Tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
+    """
+    Prepare the data for training or testing.
+    """
+    df = load_and_merge_data(conn, dataset_type)
+    X = df.drop(columns = ['id', target_col], errors = 'ignore')
+    y = df[target_col].values if target_col and target_col in df else None
+    return df, X, y
+
+# Cross-validation function
 def cross_validate(
-  conn, 
+  conn: duckdb.DuckDBPyConnection, 
   target_col: str, 
   lgb_params: Dict[str, Any], 
-  n_splits: int = 5
-  ) -> Tuple[Dict, Dict]:
-    
-    X, y, preprocessor = prepare_data(conn, 'train', target_col)
-    tss = TimeSeriesSplit(n_splits = n_splits)
-    
-    cv_results = {
-        'train_rmse': [],
-        'val_rmse': [],
-        'train_r2': [],
-        'val_r2': []
-    }
-    
-    for train_idx, val_idx in tss.split(X):
-        X_train, X_val = X[train_idx], X[val_idx]
-        y_train, y_val = y[train_idx], y[val_idx]
-        
-        train_data = lgb.Dataset(X_train, label = y_train)
-        val_data = lgb.Dataset(X_val, label = y_val)
-        
-        model = lgb.train(
-            lgb_params,
-            train_data,
-            valid_sets = [train_data, val_data],
-            num_boost_round = 1000
-            #early_stopping_rounds = 50,
-            #verbose_eval = False
-        )
-        
-        train_preds = model.predict(X_train)
-        val_preds = model.predict(X_val)
-        
-        cv_results['train_rmse'].append(
-          np.sqrt(mean_squared_error(y_train, train_preds)))
-        
-        cv_results['val_rmse'].append(
-          np.sqrt(mean_squared_error(y_val, val_preds)))
-          
-        cv_results['train_r2'].append(r2_score(y_train, train_preds))
-        
-        cv_results['val_r2'].append(r2_score(y_val, val_preds))
-    
-    cv_summary = {
-        'avg_train_rmse': np.mean(cv_results['train_rmse']),
-        'avg_val_rmse': np.mean(cv_results['val_rmse']),
-        'avg_train_r2': np.mean(cv_results['train_r2']),
-        'avg_val_r2': np.mean(cv_results['val_r2'])
-    }
-    
-    return cv_results, cv_summary
+  n_splits: int = 5) -> Tuple[Dict, Dict]:
+  """
+  Perform time-series cross-validation for LightGBM.
+  """
+  _, X, y = prepare_data(conn, 'train', target_col)
 
-def train_final_model(
-  conn, 
-  target_col: str, 
-  lgb_params: Dict[str, Any]) -> Tuple[lgb.Booster, ColumnTransformer]:
-    
-    X, y, preprocessor = prepare_data(conn, 'train', target_col)
-    train_data = lgb.Dataset(X, label = y)
-    
+  tss = TimeSeriesSplit(n_splits = n_splits)
+  cv_results = {
+    'train_logloss': [], 
+    'val_logloss': [], 
+    'train_accuracy': [], 
+    'val_accuracy': []
+    }
+
+  for train_idx, val_idx in tss.split(X):
+    X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
+    y_train, y_val = y[train_idx], y[val_idx]
+
+    train_data = lgb.Dataset(X_train, label = y_train)
+    val_data = lgb.Dataset(X_val, label = y_val)
+
     model = lgb.train(
-        lgb_params,
-        train_data,
-        num_boost_round = 1000
-       # verbose_eval=False
-    )
-    return model, preprocessor
+      lgb_params,
+      train_set = train_data,
+      valid_sets = [train_data, val_data],
+      valid_names = ['train', 'valid'],
+      num_boost_round = 100
+      #early_stopping_rounds=20,
+     # verbose_eval=False
+       )
 
-def evaluate_test_data(
-  conn, 
-  model: lgb.Booster, 
-  preprocessor: ColumnTransformer) -> pd.DataFrame:
+    train_preds = model.predict(X_train).argmax(axis = 1)
+    val_preds = model.predict(X_val).argmax(axis = 1)
+
+    cv_results['train_logloss'].append(
+      log_loss(y_train, model.predict(X_train)))
     
-    X_test, _, _ = prepare_data(
-      conn, 'test', preprocessor = preprocessor)
-    test_df = load_and_merge_data(
-      conn, 'test')
-    test_df['predictions'] = model.predict(X_test)
+    cv_results['val_logloss'].append(
+      log_loss(y_val, model.predict(X_val)))
+    
+    cv_results['train_accuracy'].append(
+      accuracy_score(y_train, train_preds))
+    
+    cv_results['val_accuracy'].append(
+      accuracy_score(y_val, val_preds))
 
-    return test_df
+  cv_summary = {
+    'avg_train_logloss': np.mean(cv_results['train_logloss']),
+    'avg_val_logloss': np.mean(cv_results['val_logloss']),
+    'avg_train_accuracy': np.mean(cv_results['train_accuracy']),
+    'avg_val_accuracy': np.mean(cv_results['val_accuracy'])
+  }
 
+  return cv_results, cv_summary
+
+# Training function
+def train_final_model(
+  conn: duckdb.DuckDBPyConnection, 
+  target_col: str, 
+  lgb_params: Dict[str, Any]) -> lgb.Booster:
+  """
+  Train the final model on the full training data.
+  """
+  _, X, y = prepare_data(conn, 'train', target_col)
+  
+  train_data = lgb.Dataset(X, label = y)
+  
+  model = lgb.train(
+    lgb_params, train_set = train_data, num_boost_round = 100)
+  
+  return model
+
+# Testing function
+def evaluate_test_data(
+  conn: duckdb.DuckDBPyConnection, 
+  model: lgb.Booster, 
+  target_col: str) -> pd.DataFrame:
+  """
+  Evaluate the model on test data.
+  """
+  df, X_test, _ = prepare_data(conn, 'test', target_col)
+  df['predictions'] = model.predict(X_test).argmax(axis = 1)
+  
+  return df
+
+# Saving the model
 def save_model(
   model: lgb.Booster, 
-  preprocessor, lgb_params: Dict[str, Any], 
+  lgb_params: Dict[str, Any], 
   path: str):
-  model.save_model(f"{path}/model.txt")
-  
-  with open(f"{path}/preprocessor.pkl", 'wb') as f:
-    joblib.dump(preprocessor, f)
-  with open(f"{path}/params.json", 'w') as f:
+  """
+  Save the trained LightGBM model and parameters.
+  """
+  model.save_model(f"{path}_model.txt")
+  with open(f"{path}_params.json", 'w') as f:
     json.dump(lgb_params, f)
 
+# Example usage
+lgb_params = {
+  'objective': 'multiclass',
+  'metric': 'multi_logloss',
+  'num_class': 4,
+  'boosting_type': 'gbdt',
+  'num_leaves': 31,
+  'learning_rate': 0.05,
+  'feature_fraction': 0.9,
+  'bagging_fraction': 0.8,
+  'bagging_freq': 5,
+  'verbose': -1,
+  'seed': SEED # Fixed seed for LightGBM
+  }
 
-def load_preprocessor(path: str):
-  with open(f"{path}/preprocessor.pkl", 'rb') as f:
-    return joblib.load(f)
-
-```
-
-```{python}
-
-models_path = f"./data/models"
-
-try:
-  os.mkdir(models_path)
-except FileExistsError:
-  print(f"data/models exists")
-```
-
-```{python}
-
-#conn = duckdb.connect(database=':memory:')
+#conn = duckdb.connect()
 target_col = 'sii'
 
-# LightGBM parameters
-lgb_params = {
-    'objective': 'regression',
-    'metric': 'rmse',
-    'boosting_type': 'gbdt',
-    'num_leaves': 31,
-    'learning_rate': 0.05,
-    'feature_fraction': 0.9,
-    'bagging_fraction': 0.8,
-    'bagging_freq': 5,
-    'verbose': -1
-}
+cv_results, cv_summary = cross_validate(conn, target_col, lgb_params)
+  
+print("Cross-validation summary:", cv_summary)
 
-# Cross-validation
-cv_results, cv_summary = cross_validate(
-  conn, target_col, lgb_params, n_splits = 5)
-print(cv_summary)
+final_model = train_final_model(conn, target_col, lgb_params)
 
-# Train final model
-final_model, preprocessor = train_final_model(
-  conn, target_col, lgb_params)
+# Save the model
+save_model(final_model, lgb_params, path = "data/model_output/final_lightgbm")
 
-# Evaluate on test data
-test_predictions = evaluate_test_data(
-  conn, final_model, preprocessor)
-print(test_predictions)
+test_results = evaluate_test_data(conn, final_model, target_col)
 
-# Save model
-save_model(
-  final_model, preprocessor, lgb_params, "data/models")
+print(test_results.head())
 
+```
+
+```{python}
+test_results_renamed = test_results.sort_values(by = 'id')
+test_results_renamed["id"]
+```
+
+```{python}
+test_results_renamed = test_results_renamed.rename(columns={"predictions":"sii"})
+test_results_renamed[["id", "sii"]]
+```
+
+```{python}
+test_results_renamed = test_results_renamed.reset_index()
+test_results_renamed[["id", "sii"]]
+```
+
+```{python}
+submission = pd.read_csv("data/sample_submission.csv")
+submission
+```
+
+```{python}
+submission['id'] == test_results_renamed['id']
+```
+
+```{python}
+submission['sii'] = test_results_renamed['sii']
+submission
+```
+
+```{python}
+
+submission.to_csv(
+  "submission.csv", index = False)
+  
 ```
 
 ## Parameter Tables
@@ -1584,7 +1740,6 @@ def engineer_light_features(pydf):
 
   return features
 
-
 ```
 
 ```{python}
@@ -1742,7 +1897,7 @@ pydf = pydf.dropna()
 
 X = pydf[['useHrs', 'q1', 'q2', 'q3', 'q4']]
 
-# 6. Make predictions on new data
+# Make predictions on new data
 X_test_engineered = engineer_light_features(X)
 
 X_test_scaled = scale_features(X_engineered, X_test_engineered)
