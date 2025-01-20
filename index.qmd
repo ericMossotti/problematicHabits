@@ -33,9 +33,11 @@ Nowadays, life is centered around the internet. At the same time, our biology ha
 
 Is the quantity of internet activity itself truly determinant of negative outcome? I think this is extremely limited as a hypothesis. Internet activity is not the same in all cases.
 
-### Output Formatters
+### Output
 
 #### Tables
+
+@iannone_gt_2025
 
 ```{r}
 #| label: "r_table_theming()"
@@ -127,6 +129,8 @@ r_table_theming <- function(r_df,
 ```
 
 #### Plots
+
+@wickham_ggplot2_2016
 
 ```{r}
 #| label: "ggplot_theming()"
@@ -246,7 +250,6 @@ rTable
 
 ```{python}
 import duckdb
-
 
 conn = duckdb.connect(':memory:')
 conn.sql(f"SET memory_limit = '24GB';")
@@ -470,8 +473,8 @@ csvDict = {
   }
 
 parquetDict = {
-  "ActigraphyTrain": 'data//series_train.parquet*/*/*'
-  ,"ActigraphyTest": 'data//series_test*/*/*'
+  "ActigraphyTrain": 'data/series_train.parquet*/*/*'
+  ,"ActigraphyTest": 'data/series_test*/*/*'
   }
 
 try:
@@ -554,510 +557,7 @@ rTable <- r_table_theming(r_df,
 rTable
 ```
 
-### Overview
-
-```{python}
-info_tables = conn.sql(f"Select * From main.duckdb_tables;").df()
-```
-
-```{python}
-#| label: "summaryProfiles"
-#| code-summary: "Create training and testing data profiles from summary statistics to better inform modeling choices."
-
-summary_dict = {
-  'ActigraphyTrain': 
-    ('ActigraphyTrainSummary'
-    ,'data/profiles/actigraphy_train_profile.csv'),
-  'ActigraphyTest': 
-    ('ActigraphyTestSummary'
-    ,'data/profiles/actigraphy_test_profile.csv'),
-  'TrainCsv': 
-    ('TrainCsvSummary'
-    ,'data/profiles/train_csv_profile.csv'),
-  'TestCsv': 
-    ('TestCsvSummary'
-    ,'data/profiles/test_csv_profile.csv')
-    }
-
-summary_frame = pd.DataFrame(summary_dict)
-
-for key, value in summary_frame.items():
-  
-  py_summary_df = conn.execute(
-    f"SUMMARIZE SELECT * FROM '{key}';").df()
-    
-  conn.register(value[0], py_summary_df)
-
-  conn.sql(
-    f"COPY {value[0]} TO '{value[1]}' (HEADER , DELIMITER ',');")  
-
-```
-
-Might be useful: Visualize summary data
-
-```{python}
-
-pydf = conn.sql(f"""
-SELECT *
-FROM ActigraphyTrainSummary;""").df()
-pydf
-```
-
-```{r}
-library(tibble)
-library(harrypotter)
-library(paletteer)
-
-r_df <- py$pydf
-
-r_df <- r_df |>
-  dplyr::select(id, quarter, weekday, relative_date_PCIAT, light, hour_of_day)
-
-notes_list =  list(
-  "Unique participant identifier code, to track related data from actigraphy to hbn datasets.",
-  "Annual quarter related to month of observation.",
-  "Day of the week (Monday = 1)",
-  "Light exposure, measured in 'lux'",
-  "24-hour time converted to a float for easier conversion for time-series analysis.",
-  "Days since questionairre, also convenient to help order daily values for time-series analysis."
-  )
-
-locations_list = list("id",
-                      "quarter",
-                      "weekday",
-                      "light",
-                      "hour_of_day",
-                      "relative_date_PCIAT")
-
-# Create a table data-frame, or tibble, of footnotes
-footnotes_df <- tibble(
-  notes = notes_list, 
-  locations = locations_list
-  )
-
-pal_df <- tibble(
-  cols = list(
-    'id', 
-    'quarter', 
-    'weekday', 
-    'relative_date_PCIAT', 
-    'light', 
-    'hour_of_day'),
-  pals = list(
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1)
-    )
-  )
-
-rTable <- r_table_theming(r_df,
-                          title = "Actigraphy Data - Training Set",
-                          subtitle = NULL,
-                          footnotes_df,
-                          source_note = md("**source**: Kaggle"),
-                          pal_df
-                          )
-
-rTable
-
-```
-
-## Machine Learning Models
-
-Key Parameters in lgb_params
-
-Since `sii` is a multi-class categorical variable, the task is a classification problem. Adjusting the `lgb_params`, evaluation metrics, and handling predictions as outlined above ensures the model correctly interprets and solves the problem.
-
-**Categorical target (sii)**:
-
-When the target is discrete (as in the case for sii, or, 'Severity Impairment Index'), it indicates a classification problem. A classification objective and corresponding evaluation metrics (e.g., accuracy, log loss) might be appropriate.
-
-1.  **`objective`: `'multiclass'`**
-
-    -   Specifies the learning objective of the model.
-
-    -   `'multiclass'` is used when the target variable is categorical with more than two classes.
-
-    -   Since the target variable (`sii`) has four possible values (0, 1, 2, 3), this is the appropriate choice.
-
-2.  **`metric`: `'multi_logloss'`**
-
-    -   Metric used to evaluate the model's performance during training.
-
-    -   `'multi_logloss'` (Multi-class Logarithmic Loss) measures how well the predicted probability distributions match the actual class labels.
-
-    -   Lower values indicate better performance. It's commonly used for classification tasks.
-
-3.  **`num_class`: `4`**
-
-    -   Specifies the number of unique classes in the target variable.
-
-    -   Since `sii` has four possible values (0, 1, 2, 3), `num_class` is set to `4`.
-
-4.  **`num_leaves`**
-
-    -   **Purpose**: Determines the complexity of the trees.
-
-    -   **Value**: `31`
-
-        -   Higher values allow the model to capture more interactions between features but can lead to overfitting if too high.
-
-        -   A smaller value may be used for simpler problems or to prevent overfitting.
-
-5.  **`learning_rate`**
-
-    -   **Purpose**: The step size for updating model weights during training.
-
-    -   **Value**: `0.05`
-
-        -   A smaller value makes the model learn slowly, often improving generalization.
-
-        -   If one lowers `learning_rate`, they may need to increase `num_boost_round` (number of training iterations).
-
-6.  **`feature_fraction`**
-
-    -   **Purpose**: The proportion of features to randomly sample for each iteration of training.
-
-    -   **Value**: `0.9`
-
-        -   Prevents overfitting by forcing the model to rely on different subsets of features.
-
-        -   A value close to 1 means most features are used, while smaller values increase regularization.
-
-7.  **`bagging_fraction`**
-
-    -   **Purpose**: The proportion of training samples to randomly sample for each iteration of training.
-
-    -   **Value**: `0.8`
-
-        -   Similar to `feature_fraction`, but applied to the training data.
-
-        -   Helps the model generalize better by using only a subset of the data.
-
-8.  **`bagging_freq`**
-
-    -   **Purpose**: The frequency (in terms of iterations) at which bagging (random sampling) is applied.
-
-    -   **Value**: `5`
-
-        -   Bagging is applied every 5 iterations.
-
-        -   A value of `0` disables bagging.
-
-9.  **`verbose`**
-
-    -   **Purpose**: Controls the verbosity of the training process.
-
-    -   **Value**: `-1`
-
-        -   Suppresses output unless there's an error.
-
-        -   A value of `1` or `2` provides more detailed output during training.
-
-```{python}
-
-model_out = f"./data/model_output"
-
-try:
-  os.mkdir(model_out)
-except FileExistsError:
-  print(f"data/model_output exists")
-
-```
-
-```{python}
-
-sii_model_out = f"./data/model_output/sii_model"
-
-try:
-  os.mkdir(sii_model_out)
-except FileExistsError:
-  print(f"data/model_output/sii_model exists")
-
-```
-
-### New ML
-
-```{python}
-#| label: "MLpipeline"
-#| code-summary: "Statistical modeling with machine learning models."
-
-import duckdb
-import numpy as np
-import pandas as pd
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.metrics import mean_squared_error, accuracy_score, log_loss
-import lightgbm as lgb
-import joblib
-import json
-from typing import Dict, Any, Tuple
-import random
-
-# Set random seeds for reproducibility
-SEED = 14
-np.random.seed(SEED)
-random.seed(SEED)
-
-# Function to load and merge data
-def load_and_merge_data(
-  conn: duckdb.DuckDBPyConnection, 
-  dataset_type: str) -> pd.DataFrame:
-    """
-    Load, aggregate, and merge data for a specified dataset type 
-    ('train' or 'test').
-    """
-    if dataset_type == 'train':
-        query = """
-        WITH TrainBase AS (
-            SELECT id,
-                   COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
-                   COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
-                   COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
-                   COALESCE(AVG(physical_height::FLOAT), 0) AS height,
-                   COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
-                   COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate,
-                   COALESCE(MAX(sii::INTEGER), 0) AS sii -- Target column
-            FROM TrainCsv
-            GROUP BY id
-        ),
-        TrainActivity AS (
-            SELECT id,
-                   COALESCE(AVG(light::FLOAT), 0) AS light_mean,
-                   COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
-                   COALESCE(MAX(light::FLOAT), 0) AS light_max,
-                   COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
-                   COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
-                   COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday,
-                   COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
-            FROM ActigraphyTrain
-            GROUP BY id
-        )
-        SELECT *
-        FROM TrainBase
-        LEFT JOIN TrainActivity USING (id);
-        """
-    elif dataset_type == 'test':
-        query = """
-        WITH TestBase AS (
-            SELECT id,
-                   COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
-                   COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
-                   COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
-                   COALESCE(AVG(physical_height::FLOAT), 0) AS height,
-                   COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
-                   COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate
-            FROM TestCsv
-            GROUP BY id
-        ),
-        TestActivity AS (
-            SELECT id,
-                   COALESCE(AVG(light::FLOAT), 0) AS light_mean,
-                   COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
-                   COALESCE(MAX(light::FLOAT), 0) AS light_max,
-                   COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
-                   COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
-                   COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday,
-                   COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
-            FROM ActigraphyTest
-            GROUP BY id
-        )
-        SELECT *
-        FROM TestBase
-        LEFT JOIN TestActivity USING (id);
-        """
-    else:
-        raise ValueError("Invalid dataset_type. Must be 'train' or 'test'.")
-    
-    return conn.execute(query).df()
-
-# Data preparation function
-def prepare_data(
-  conn: duckdb.DuckDBPyConnection, 
-  dataset_type: str, 
-  target_col: str = None) -> Tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
-    """
-    Prepare the data for training or testing.
-    """
-    df = load_and_merge_data(conn, dataset_type)
-    X = df.drop(columns = ['id', target_col], errors = 'ignore')
-    y = df[target_col].values if target_col and target_col in df else None
-    return df, X, y
-
-# Cross-validation function
-def cross_validate(
-  conn: duckdb.DuckDBPyConnection, 
-  target_col: str, 
-  lgb_params: Dict[str, Any], 
-  n_splits: int = 5) -> Tuple[Dict, Dict]:
-  """
-  Perform time-series cross-validation for LightGBM.
-  """
-  _, X, y = prepare_data(conn, 'train', target_col)
-
-  tss = TimeSeriesSplit(n_splits = n_splits)
-  cv_results = {
-    'train_logloss': [], 
-    'val_logloss': [], 
-    'train_accuracy': [], 
-    'val_accuracy': []
-    }
-
-  for train_idx, val_idx in tss.split(X):
-    X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
-    y_train, y_val = y[train_idx], y[val_idx]
-
-    train_data = lgb.Dataset(X_train, label = y_train)
-    val_data = lgb.Dataset(X_val, label = y_val)
-
-    model = lgb.train(
-      lgb_params,
-      train_set = train_data,
-      valid_sets = [train_data, val_data],
-      valid_names = ['train', 'valid'],
-      num_boost_round = 100
-      #early_stopping_rounds=20,
-     # verbose_eval=False
-       )
-
-    train_preds = model.predict(X_train).argmax(axis = 1)
-    val_preds = model.predict(X_val).argmax(axis = 1)
-
-    cv_results['train_logloss'].append(
-      log_loss(y_train, model.predict(X_train)))
-    
-    cv_results['val_logloss'].append(
-      log_loss(y_val, model.predict(X_val)))
-    
-    cv_results['train_accuracy'].append(
-      accuracy_score(y_train, train_preds))
-    
-    cv_results['val_accuracy'].append(
-      accuracy_score(y_val, val_preds))
-
-  cv_summary = {
-    'avg_train_logloss': np.mean(cv_results['train_logloss']),
-    'avg_val_logloss': np.mean(cv_results['val_logloss']),
-    'avg_train_accuracy': np.mean(cv_results['train_accuracy']),
-    'avg_val_accuracy': np.mean(cv_results['val_accuracy'])
-  }
-
-  return cv_results, cv_summary
-
-# Training function
-def train_final_model(
-  conn: duckdb.DuckDBPyConnection, 
-  target_col: str, 
-  lgb_params: Dict[str, Any]) -> lgb.Booster:
-  """
-  Train the final model on the full training data.
-  """
-  _, X, y = prepare_data(conn, 'train', target_col)
-  
-  train_data = lgb.Dataset(X, label = y)
-  
-  model = lgb.train(
-    lgb_params, train_set = train_data, num_boost_round = 100)
-  
-  return model
-
-# Testing function
-def evaluate_test_data(
-  conn: duckdb.DuckDBPyConnection, 
-  model: lgb.Booster, 
-  target_col: str) -> pd.DataFrame:
-  """
-  Evaluate the model on test data.
-  """
-  df, X_test, _ = prepare_data(conn, 'test', target_col)
-  df['predictions'] = model.predict(X_test).argmax(axis = 1)
-  
-  return df
-
-# Saving the model
-def save_model(
-  model: lgb.Booster, 
-  lgb_params: Dict[str, Any], 
-  path: str):
-  """
-  Save the trained LightGBM model and parameters.
-  """
-  model.save_model(f"{path}_model.txt")
-  with open(f"{path}_params.json", 'w') as f:
-    json.dump(lgb_params, f)
-
-# Example usage
-lgb_params = {
-  'objective': 'multiclass',
-  'metric': 'multi_logloss',
-  'num_class': 4,
-  'boosting_type': 'gbdt',
-  'num_leaves': 31,
-  'learning_rate': 0.05,
-  'feature_fraction': 0.9,
-  'bagging_fraction': 0.8,
-  'bagging_freq': 5,
-  'verbose': -1,
-  'seed': SEED # Fixed seed for LightGBM
-  }
-
-#conn = duckdb.connect()
-target_col = 'sii'
-
-cv_results, cv_summary = cross_validate(conn, target_col, lgb_params)
-  
-print("Cross-validation summary:", cv_summary)
-
-final_model = train_final_model(conn, target_col, lgb_params)
-
-# Save the model
-save_model(final_model, lgb_params, path = "data/model_output/final_lightgbm")
-
-test_results = evaluate_test_data(conn, final_model, target_col)
-
-print(test_results.head())
-
-```
-
-```{python}
-test_results_renamed = test_results.sort_values(by = 'id')
-test_results_renamed["id"]
-```
-
-```{python}
-test_results_renamed = test_results_renamed.rename(columns={"predictions":"sii"})
-test_results_renamed[["id", "sii"]]
-```
-
-```{python}
-test_results_renamed = test_results_renamed.reset_index()
-test_results_renamed[["id", "sii"]]
-```
-
-```{python}
-submission = pd.read_csv("data/sample_submission.csv")
-submission
-```
-
-```{python}
-submission['id'] == test_results_renamed['id']
-```
-
-```{python}
-submission['sii'] = test_results_renamed['sii']
-submission
-```
-
-```{python}
-
-submission.to_csv(
-  "submission.csv", index = False)
-  
-```
-
-## Parameter Tables
+## EDA
 
 ```{python}
 #| label: "create_table_with_regex_columns()"
@@ -1246,17 +746,7 @@ conn.execute(f"CHECKPOINT;")
 
 ```
 
-### Data Model Schematic
-
-::: column-screen-inset
-```{mermaid}
-%%| label: fig-childMermaid
-%%| fig-cap: "child"
-%%| file: diagrams/emermaid.mmd
-```
-:::
-
-## Actigraphy, Physical, and Demographics
+### Actigraphy, Physical, and Demographics
 
 It might be useful to explore how the time of day and associated exposure to light might correlate to other factors, such as sii, physical characteristics, and internet use.
 
@@ -1447,15 +937,6 @@ conn.sql(f"CHECKPOINT;")
 pydf = conn.sql(f"SELECT * FROM AggregatedLights LIMIT 10;").df()
 ```
 
-```{python}
-
-lightdropList = ("Light1", "Light2", "Light3", "Light4")
-
-for lightdrop in lightdropList:
-  conn.sql(f"DROP TABLE {lightdrop};")
-  
-```
-
 ```{r}
 #| label: tbl-AggregatedLights
 
@@ -1488,11 +969,19 @@ locations_list = list(
 footnotes_df <- tibble(notes = notes_list, 
                        locations = locations_list)
 
-rTable <- r_table_theming(rDataFrame = r_df,
+pal_df <- tibble(
+  cols = locations_list,
+  pals = list(
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
+  )
+
+
+rTable <- r_table_theming(r_df,
                           title = "Quartile Data - Lights",
                           subtitle = NULL,
                           footnotes_df,
-                          source_note = md("**source**: Kaggle"))
+                          source_note = md("**source**: Kaggle"),
+                          pal_df)
 
 rTable
 
@@ -1543,7 +1032,6 @@ Group-averaging sii, internet use hours, and pre-averaged lux quartiles by age a
 
 ```{python}
 
-#CREATE OR REPLACE TABLE DayQuartiles AS
 pydf = conn.sql(f"""
 SELECT
   useHrs
@@ -1567,23 +1055,52 @@ pydf = pydf.dropna()
 
 r_df <- py$pydf
 
-notes_list =  list("Hours spent on the internet, as reported by caregivers of the participants.", "Problematic behavior score.")
-locations_list = list("useHrs", "sii")
+notes_list =  list(
+  "Hours spent on the internet, as reported by caregivers of the participants.",
+  "Count of observations in the dataset.",
+  "Problematic behavior score.",
+  "Mean lux (12am to 6am)",
+  "Mean lux (6am to 12pm)",
+  "Mean lux (12pm to 6pm)",
+  "Mean lux (6pm to 12am)"
+  )
+
+locations_list = list(
+  "useHrs", 
+  "observations",
+  "sii",
+  "q1",
+  "q2",
+  "q3",
+  "q4"
+  )
 
 # Create a table dataframe, or tibble, of footnotes
-footnotes_df <- tibble(notes = notes_list, locations = locations_list)
+footnotes_df <- tibble(
+  notes = notes_list, 
+  locations = locations_list
+  )
 
-rTable <- r_table_theming(rDataFrame = r_df,
+pal_df <- tibble(
+  cols = locations_list,
+  pals = list(
+    eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
+  )
+
+rTable <- r_table_theming(r_df,
                           title = "Problematic Behavior to Internet Usage",
                           subtitle = NULL,
                           footnotes_df,
-                          source_note = md("**source**: Kaggle"))
+                          source_note = md("**source**: Kaggle"),
+                          pal_df
+                          )
 
 rTable
 ```
 
 ```{r}
-#| label: "fig-agex"
+#| label: "fig-useSii"
+
 library(scales)
 
 r_plot <- ggplot(data = r_df, 
@@ -1599,6 +1116,8 @@ r_plot + ggplot_theming()
 ```
 
 ```{python}
+#| label: "caseWhenUnionBMI"
+#| code-summary: "Combining SQL with Python data structures to organized data according to several conditions, such as: bmi, age, sex, and waist_circumference."
 
 riskyDictionary = {
   'Risk1': 
@@ -1709,202 +1228,9 @@ GROUP BY
 """)
 
 pydf = conn.execute(f"""
-SELECT * FROM RiskCategorySummary;
+SELECT * 
+FROM RiskCategorySummary;
 """).df()
-
-```
-
-```{python}
-
-def engineer_light_features(pydf):
-  """
-  Create engineered features from light exposure data
-  """
-  features = pydf.copy()
-  
-  # Light exposure ratios
-  features['morning_afternoon_ratio'] = (features['q2'] / features['q3'])
-  
-  features['day_night_ratio'] = (features['q2'] + features['q3']) / (features['q1'] + features['q4'])
-  
-  # Daily variation
-  light_cols = ['q1', 'q2', 'q3', 'q4']
-
-  features['light_variance'] = features[light_cols].var(axis = 1)
-  
-  features['light_range'] = (features[light_cols].max(axis = 1) - features[light_cols].min(axis = 1))
-  
-  # Interactions with useHrs
-  for col in light_cols:
-    features[f'useHrs_{col}_interaction'] = features['useHrs'] * features[col]
-
-  return features
-
-```
-
-```{python}
-from sklearn.preprocessing import StandardScaler
-
-def scale_features(X_train, X_test = None):
-  """
-  Scale features using StandardScaler
-  """
-  scaler = StandardScaler()
-  X_train_scaled = pd.DataFrame(
-      scaler.fit_transform(X_train),
-      columns = X_train.columns,
-      index = X_train.index
-  )
-  
-  if X_test is not None:
-      X_test_scaled = pd.DataFrame(
-          scaler.transform(X_test),
-          columns = X_test.columns,
-          index = X_test.index
-      )
-      return X_train_scaled, X_test_scaled
-  
-  return X_train_scaled
-
-```
-
-```{python}
-from sklearn.model_selection import cross_val_score, GridSearchCV
-from sklearn.metrics import mean_squared_error
-from mord import LogisticIT
-
-def train_ordinal_model(X_train, y_train):
-  """
-  Train ordinal regression model with grid search
-  """
-  model = LogisticIT()
-  
-  param_grid = {
-    'alpha': [0.01, 0.1, 1.0, 10.0],
-    'max_iter': [100, 200, 500]
-    }
-  
-  grid_search = GridSearchCV(
-    model,
-    param_grid,
-    cv = 5,
-    scoring = 'neg_mean_squared_error',
-    n_jobs = -1,
-    verbose = 1
-  )
-  
-  grid_search.fit(X_train, y_train)
-  
-  return grid_search
-
-```
-
-```{python}
-
-def evaluate_ordinal_model(model, X, y):
-    """
-    Evaluate model performance with multiple metrics
-    """
-    # Predictions
-    y_pred = model.predict(X)
-    
-    # Calculate metrics
-    mse = mean_squared_error(y, y_pred)
-    exact_match = np.mean(y_pred == y)
-    one_off = np.mean(np.abs(y_pred - y) <= 1)
-    
-    # Cross-validation scores
-    cv_scores = cross_val_score(
-        model,
-        X,
-        y,
-        cv = 5,
-        scoring='neg_mean_squared_error'
-    )
-    
-    results = {
-        'mse': mse,
-        'rmse': np.sqrt(mse),
-        'cv_mse_mean': -cv_scores.mean(),
-        'cv_mse_std': cv_scores.std(),
-        'exact_match_accuracy': exact_match,
-        'one_off_accuracy': one_off
-    }
-    
-    return results
-
-```
-
-```{python}
-
-pydf = conn.sql(f"""
-SELECT
-  useHrs::INTEGER AS useHrs
-  ,sii::TEXT::INTEGER AS sii
-  ,min_q1 AS 'q1'
-  ,q1_q2 AS 'q2'
-  ,q2_q3 AS 'q3'
-  ,q3_max AS 'q4'
-FROM 
-  AggregatedLights;""").df()
-
-pydf = pydf.dropna()
-
-```
-
-```{python}
-
-# 1. Load and prepare data
-X = pydf[['useHrs', 'q1', 'q2', 'q3', 'q4']]
-
-y = pydf['sii']
-
-# 2. Engineer features
-X_engineered = engineer_light_features(X)
-
-# 3. Scale features
-X_scaled = scale_features(X_engineered)
-
-# 4. Train model
-model = train_ordinal_model(X_scaled, y)
-print(f"Best parameters: {model.best_params_}")
-
-# 5. Evaluate model
-results = evaluate_ordinal_model(model.best_estimator_, X_scaled, y)
-
-for metric, value in results.items():
-    print(f"{metric}: {value:.4f}")
-
-```
-
-```{python}
-
-pydf = conn.sql(f"""
-SELECT
-  useHrs::INTEGER AS useHrs
-  ,min_q1 AS 'q1'
-  ,q1_q2 AS 'q2'
-  ,q2_q3 AS 'q3'
-  ,q3_max AS 'q4'
-FROM 
-  AggregatedLightsTest;""").df()
-
-pydf = pydf.dropna()
-
-```
-
-```{python}
-
-X = pydf[['useHrs', 'q1', 'q2', 'q3', 'q4']]
-
-# Make predictions on new data
-X_test_engineered = engineer_light_features(X)
-
-X_test_scaled = scale_features(X_engineered, X_test_engineered)
-
-predictions = model.predict(X_test_scaled)
-
-predictions
 
 ```
 
@@ -1929,11 +1255,18 @@ locations_list = list("risk_category"
 footnotes_df <- tibble(notes = notes_list, 
                        locations = locations_list)
 
-rTable <- r_table_theming(rDataFrame = r_df,
+pal_df <- tibble(
+  cols = locations_list,
+  pals = list(eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
+  )
+
+rTable <- r_table_theming(r_df,
                           title = "Disease Risk Categories to Lux",
                           subtitle = NULL,
                           footnotes_df,
-                          source_note = md("**source**: Kaggle"))
+                          source_note = md("**source**: Kaggle"),
+                          pal_df
+                          )
 
 rTable
 
@@ -1961,7 +1294,7 @@ data_long
 ```
 
 ```{r}
-#| label: ""
+#| label: "fig-luxRiskTimePeriods"
 
 r_plot <- ggplot(data = data_long, 
                  aes(x = quarter, 
@@ -1979,6 +1312,548 @@ r_plot + ggplot_theming()
 
 ```
 
+### Summary Profiles
+
+```{python}
+info_tables = conn.sql(f"Select * From main.duckdb_tables;").df()
+```
+
+```{python}
+#| label: "summaryProfiles"
+#| code-summary: "Create training and testing data profiles from summary statistics to better inform modeling choices."
+
+summary_dict = {
+  'ActigraphyTrain': 
+    ('ActigraphyTrainSummary'
+    ,'data/profiles/actigraphy_train_profile.csv'),
+  'ActigraphyTest': 
+    ('ActigraphyTestSummary'
+    ,'data/profiles/actigraphy_test_profile.csv'),
+  'TrainCsv': 
+    ('TrainCsvSummary'
+    ,'data/profiles/train_csv_profile.csv'),
+  'TestCsv': 
+    ('TestCsvSummary'
+    ,'data/profiles/test_csv_profile.csv')
+    }
+
+summary_frame = pd.DataFrame(summary_dict)
+
+for key, value in summary_frame.items():
+  
+  py_summary_df = conn.execute(
+    f"SUMMARIZE SELECT * FROM '{key}';").df()
+    
+  conn.register(value[0], py_summary_df)
+
+  conn.sql(
+    f"COPY {value[0]} TO '{value[1]}' (HEADER , DELIMITER ',');")  
+
+```
+
+Might be useful: Visualize summary data
+
+```{python}
+
+pydf = conn.sql(f"""
+SELECT *
+FROM ActigraphyTrainSummary;""").df()
+
+pydf
+```
+
+### Machine Learning Models
+
+Key Parameters in lgb_params
+
+Since `sii` is a multi-class categorical variable, the task is a classification problem. Adjusting the `lgb_params`, evaluation metrics, and handling predictions as outlined above ensures the model correctly interprets and solves the problem.
+
+**Categorical target (sii)**:
+
+When the target is discrete (as in the case for sii, or, 'Severity Impairment Index'), it indicates a classification problem. A classification objective and corresponding evaluation metrics (e.g., accuracy, log loss) might be appropriate.
+
+1.  **`objective`: `'multiclass'`**
+
+    -   Specifies the learning objective of the model.
+
+    -   `'multiclass'` is used when the target variable is categorical with more than two classes.
+
+    -   Since the target variable (`sii`) has four possible values (0, 1, 2, 3), this is the appropriate choice.
+
+2.  **`metric`: `'multi_logloss'`**
+
+    -   Metric used to evaluate the model's performance during training.
+
+    -   `'multi_logloss'` (Multi-class Logarithmic Loss) measures how well the predicted probability distributions match the actual class labels.
+
+    -   Lower values indicate better performance. It's commonly used for classification tasks.
+
+3.  **`num_class`: `4`**
+
+    -   Specifies the number of unique classes in the target variable.
+
+    -   Since `sii` has four possible values (0, 1, 2, 3), `num_class` is set to `4`.
+
+4.  **`num_leaves`**
+
+    -   **Purpose**: Determines the complexity of the trees.
+
+    -   **Value**: `31`
+
+        -   Higher values allow the model to capture more interactions between features but can lead to overfitting if too high.
+
+        -   A smaller value may be used for simpler problems or to prevent overfitting.
+
+5.  **`learning_rate`**
+
+    -   **Purpose**: The step size for updating model weights during training.
+
+    -   **Value**: `0.05`
+
+        -   A smaller value makes the model learn slowly, often improving generalization.
+
+        -   If one lowers `learning_rate`, they may need to increase `num_boost_round` (number of training iterations).
+
+6.  **`feature_fraction`**
+
+    -   **Purpose**: The proportion of features to randomly sample for each iteration of training.
+
+    -   **Value**: `0.9`
+
+        -   Prevents overfitting by forcing the model to rely on different subsets of features.
+
+        -   A value close to 1 means most features are used, while smaller values increase regularization.
+
+7.  **`bagging_fraction`**
+
+    -   **Purpose**: The proportion of training samples to randomly sample for each iteration of training.
+
+    -   **Value**: `0.8`
+
+        -   Similar to `feature_fraction`, but applied to the training data.
+
+        -   Helps the model generalize better by using only a subset of the data.
+
+8.  **`bagging_freq`**
+
+    -   **Purpose**: The frequency (in terms of iterations) at which bagging (random sampling) is applied.
+
+    -   **Value**: `5`
+
+        -   Bagging is applied every 5 iterations.
+
+        -   A value of `0` disables bagging.
+
+9.  **`verbose`**
+
+    -   **Purpose**: Controls the verbosity of the training process.
+
+    -   **Value**: `-1`
+
+        -   Suppresses output unless there's an error.
+
+        -   A value of `1` or `2` provides more detailed output during training.
+
+```{python}
+import os
+
+try:
+  os.mkdir('./data/output')
+except FileExistsError:
+  print(f"data/output exists")
+```
+
+```{python}
+#| label: "MLpipeline"
+#| code-summary: "Statistical modeling with machine learning models."
+
+import duckdb
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import mean_squared_error, accuracy_score, log_loss
+import lightgbm as lgb
+import joblib
+import json
+from typing import Dict, Any, Tuple
+import random
+
+# Set random seeds for reproducibility
+SEED = 14
+np.random.seed(SEED)
+random.seed(SEED)
+
+# Function to load and merge data
+def load_and_merge_data(
+  conn: duckdb.DuckDBPyConnection, 
+  dataset_type: str) -> pd.DataFrame:
+    """
+    Load, aggregate, and merge data for a specified dataset type 
+    ('train' or 'test').
+    """
+    if dataset_type == 'train':
+      query = """
+      WITH TrainBase AS (
+          SELECT id,
+                 COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
+                 COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
+                 COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
+                 COALESCE(AVG(physical_height::FLOAT), 0) AS height,
+                 COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
+                 COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate,
+                 COALESCE(MAX(sii::INTEGER), 0) AS sii -- Target column
+          FROM TrainCsv
+          GROUP BY id
+      ),
+      TrainActivity AS (
+          SELECT id,
+                 COALESCE(AVG(light::FLOAT), 0) AS light_mean,
+                 COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
+                 COALESCE(MAX(light::FLOAT), 0) AS light_max,
+                 COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
+                 COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
+                 COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday,
+                 COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
+          FROM ActigraphyTrain
+          GROUP BY id
+      )
+      SELECT *
+      FROM TrainBase
+      LEFT JOIN TrainActivity USING (id);
+      """
+    elif dataset_type == 'test':
+      query = """
+      WITH TestBase AS (
+          SELECT id,
+                 COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
+                 COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
+                 COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
+                 COALESCE(AVG(physical_height::FLOAT), 0) AS height,
+                 COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
+                 COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate
+          FROM TestCsv
+          GROUP BY id
+      ),
+      TestActivity AS (
+          SELECT id,
+                 COALESCE(AVG(light::FLOAT), 0) AS light_mean,
+                 COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
+                 COALESCE(MAX(light::FLOAT), 0) AS light_max,
+                 COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
+                 COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
+                 COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday,
+                 COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
+          FROM ActigraphyTest
+          GROUP BY id
+      )
+      SELECT *
+      FROM TestBase
+      LEFT JOIN TestActivity USING (id);
+      """
+    else:
+      raise ValueError("Invalid dataset_type. Must be 'train' or 'test'.")
+    
+    return conn.execute(query).df()
+
+# Data preparation function
+def prepare_data(
+  conn: duckdb.DuckDBPyConnection, 
+  dataset_type: str, 
+  target_col: str = None) -> Tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
+  """
+  Prepare the data for training or testing.
+  """
+  df = load_and_merge_data(conn, dataset_type)
+  X = df.drop(columns = ['id', target_col], errors = 'ignore')
+  y = df[target_col].values if target_col and target_col in df else None
+  return df, X, y
+
+# Cross-validation function
+def cross_validate(
+  conn: duckdb.DuckDBPyConnection, 
+  target_col: str, 
+  lgb_params: Dict[str, Any], 
+  n_splits: int = 5) -> Tuple[Dict, Dict]:
+  """
+  Perform time-series cross-validation for LightGBM.
+  """
+  _, X, y = prepare_data(conn, 'train', target_col)
+  
+  # Save the training data (features + target) for visualization
+  train_data = pd.concat(
+    [X, pd.DataFrame({target_col: y})], axis = 1)
+    
+  train_data.to_csv(
+    "data/output/train_data.csv", index = False)
+
+  tss = TimeSeriesSplit(n_splits = n_splits)
+  
+  cv_results = {
+    'train_logloss': [], 
+    'val_logloss': [], 
+    'train_accuracy': [], 
+    'val_accuracy': []
+    }
+
+  for train_idx, val_idx in tss.split(X):
+    X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
+    y_train, y_val = y[train_idx], y[val_idx]
+
+    train_data = lgb.Dataset(X_train, label = y_train)
+    val_data = lgb.Dataset(X_val, label = y_val)
+
+    model = lgb.train(
+      lgb_params,
+      train_set = train_data,
+      valid_sets = [train_data, val_data],
+      valid_names = ['train', 'valid'],
+      num_boost_round = 100
+      #early_stopping_rounds=20,
+     # verbose_eval=False
+       )
+
+    train_preds = model.predict(X_train).argmax(axis = 1)
+    val_preds = model.predict(X_val).argmax(axis = 1)
+
+    cv_results['train_logloss'].append(
+      log_loss(y_train, model.predict(X_train)))
+    
+    cv_results['val_logloss'].append(
+      log_loss(y_val, model.predict(X_val)))
+    
+    cv_results['train_accuracy'].append(
+      accuracy_score(y_train, train_preds))
+    
+    cv_results['val_accuracy'].append(
+      accuracy_score(y_val, val_preds))
+
+  cv_summary = {
+    'avg_train_logloss': np.mean(cv_results['train_logloss']),
+    'avg_val_logloss': np.mean(cv_results['val_logloss']),
+    'avg_train_accuracy': np.mean(cv_results['train_accuracy']),
+    'avg_val_accuracy': np.mean(cv_results['val_accuracy'])
+  }
+  
+  return cv_results, cv_summary
+
+# Training function
+def train_final_model(
+  conn: duckdb.DuckDBPyConnection, 
+  target_col: str, 
+  lgb_params: Dict[str, Any]) -> lgb.Booster:
+  """
+  Train the final model on the full training data.
+  """
+  _, X, y = prepare_data(conn, 'train', target_col)
+  
+  train_data = lgb.Dataset(X, label = y)
+  
+  model = lgb.train(
+    lgb_params, train_set = train_data, num_boost_round = 100)
+  
+  return model
+
+# Testing function
+def evaluate_test_data(
+  conn: duckdb.DuckDBPyConnection, 
+  model: lgb.Booster, 
+  target_col: str) -> pd.DataFrame:
+  """
+  Evaluate the model on test data.
+  """
+  df, X_test, _ = prepare_data(conn, 'test', target_col)
+  df['predictions'] = model.predict(X_test).argmax(axis = 1)
+  
+  df.to_csv(
+    "data/output/test_results.csv", index = False)
+  
+  return df
+
+# Saving the model
+def save_model(
+  model: lgb.Booster, 
+  lgb_params: Dict[str, Any], 
+  path: str):
+  """
+  Save the trained LightGBM model and parameters.
+  """
+  model.save_model(f"{path}_model.txt")
+  with open(f"{path}_params.json", 'w') as f:
+    json.dump(lgb_params, f)
+
+# Example usage
+lgb_params = {
+  'objective': 'multiclass',
+  'metric': 'multi_logloss',
+  'num_class': 4,
+  'boosting_type': 'gbdt',
+  'num_leaves': 31,
+  'learning_rate': 0.05,
+  'feature_fraction': 0.9,
+  'bagging_fraction': 0.8,
+  'bagging_freq': 5,
+  'verbose': -1,
+  'seed': SEED # Fixed seed for LightGBM
+  }
+
+target_col = 'sii'
+
+cv_results, cv_summary = cross_validate(
+  conn, target_col, lgb_params)
+
+with open("data/output/cv_summary.json", "w") as f:
+  json.dump(cv_summary, f)
+  
+with open("data/output/cv_results.json", "w") as f:
+  json.dump(cv_results, f)
+
+print("Cross-validation summary:", cv_summary)
+
+# Train the final model
+final_model = train_final_model(conn, target_col, lgb_params)
+
+# Save the model
+save_model(final_model, lgb_params, path = "data/output/lightGbm")
+
+# Evaluate on test data and save test results
+test_results = evaluate_test_data(conn, final_model, target_col)
+
+print(test_results.head())
+
+```
+
+```{r}
+library(ggplot2)
+library(gt)
+library(jsonlite)
+library(readr)
+
+# Load exported data
+train_data <- read_csv("data/output/train_data.csv")
+train_data <- train_data |> as.data.frame()
+
+test_results <- read_csv("data/output/test_results.csv")
+test_results <- test_results |> as.data.frame()
+
+cv_results <- fromJSON("data/output/cv_results.json")
+
+cv_summary <- fromJSON("data/output/cv_summary.json")
+
+```
+
+```{r}
+library(dplyr)
+
+# Example: Visualize age distribution in training data
+agePlot <- train_data |>
+  select(age) |>
+  group_by(age) |>
+  count(name = "count") |>
+  arrange(age) |>
+  ggplot(aes(x = age, fill = count)) +
+  geom_col(aes(y = count)) +
+  paletteer::scale_fill_paletteer_c("harrypotter::hufflepuff") +
+  labs(
+    title = "Age Distribution in Training Data", 
+    x = "Age", 
+    y = "Count")
+
+agePlot + ggplot_theming()
+```
+
+```{r}
+
+library(tidyr)
+
+cv_df <- data.frame(
+  fold = 1:length(cv_results$train_logloss),
+  train_logloss = cv_results$train_logloss,
+  val_logloss = cv_results$val_logloss,
+  train_accuracy = cv_results$train_accuracy,
+  val_accuracy = cv_results$val_accuracy
+)
+
+cv_long_accuracy <- cv_df |>
+  pivot_longer(
+    cols = c(train_accuracy, val_accuracy),
+    names_to = "type",
+    values_to = "accuracy"
+  ) |>
+  mutate(type = ifelse(type == "train_accuracy", "Train", "Validation"))
+
+r_plot <- cv_long_accuracy |>
+  ggplot(aes(x = factor(fold), y = accuracy, fill = type)) +
+  geom_col(position = position_dodge(width = 0.75)) +
+  coord_cartesian(ylim = c(0.50, 1.00)) +
+  labs(
+    title = "Accuracy Over Cross-Validation Folds",
+    x = "Fold",
+    y = "Accuracy"
+  ) +
+  scale_fill_paletteer_d(`"awtools::a_palette"`)
+
+r_plot + ggplot_theming()
+```
+
+```{r}
+library(tidyr)
+
+cv_df <- data.frame(
+  fold = 1:length(cv_results$train_logloss),
+  train_logloss = cv_results$train_logloss,
+  val_logloss = cv_results$val_logloss,
+  train_accuracy = cv_results$train_accuracy,
+  val_accuracy = cv_results$val_accuracy
+)
+
+cv_long_logloss <- cv_df |>
+  pivot_longer(
+    cols = c(train_logloss, val_logloss),
+    names_to = "type",
+    values_to = "logLoss"
+  ) |>
+  mutate(type = ifelse(type == "train_logloss", "Train", "Validation"))
+
+r_plot <- cv_long_logloss |>
+  ggplot(aes(x = factor(fold), y = logLoss, fill = type)) +
+  geom_col(position = position_dodge(width = 0.65)) +
+  coord_cartesian(ylim = c(NA, 0.90)) +
+  labs(
+    title = "Log-Loss Over Cross-Validation Folds",
+    x = "Fold",
+    y = "Log-Loss"
+  ) +
+  scale_fill_paletteer_d(`"awtools::ppalette"`)
+
+r_plot + ggplot_theming()
+```
+
+```{python}
+
+test_results_renamed = test_results.sort_values(by = 'id')
+
+test_results_renamed = test_results_renamed.rename(columns = {"predictions":"sii"})
+
+test_results_renamed = test_results_renamed.reset_index()
+
+submission = pd.read_csv("data/sample_submission.csv")
+```
+
+```{python}
+
+submission['id'] == test_results_renamed['id']
+```
+
+```{python}
+
+submission['sii'] = test_results_renamed['sii']
+
+submission.to_csv(
+  "submission.csv", index = False)
+
+submission
+```
+
 ## Close Connection
 
 ```{python}
@@ -1988,16 +1863,4 @@ try:
   print(f"database connection closed")
 except:
   print(f"could not close the connection")
-```
-
-```{python}
-pydf = conn.sql(f"""
-SELECT
-  *
-FROM 
-  AggregatedLightsTest
-LIMIT
-  10;""").df()
-  
-pydf
 ```
