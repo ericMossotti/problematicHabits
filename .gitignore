@@ -9,3 +9,5 @@
 *.Rproj
 
 /.quarto/
+
+prototypeModels.py
