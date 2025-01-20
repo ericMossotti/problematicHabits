@@ -21,7 +21,7 @@ lightbox: auto
 
 ## Rationale and Initial Thoughts
 
-The grounds for analyses in this case is the problematic behavior as it pertains to the subjects' experience and their parents' via questionnaires, physical fitness tests, worn instrument measurements and demographics. The resulting data is to be processed and connections drawn.
+The grounds for analyses in this case is the problematic behavior as it pertains to the subjects' experience and their parents' via questionnaires, physical fitness tests, worn instrument measurements and demographics. The resulting data is to be processed and connections drawn. [@santorelli_child_2024]
 
 There are quite a few variables to consider here. The largest amount of data was collected in real time. This was recorded by a device that could measure acceleration in 3D space, ambient light, time, and the quarter of the year while the participant went about their lives. Many health issues could stem from a lack of exercise. It may follow that the more someone is actively using the internet, the less likely they are to meet daily activity recommendations.
 
@@ -35,15 +35,15 @@ Is the quantity of internet activity itself truly determinant of negative outcom
 
 ### Output
 
+I used some notable packages to give the tables and plots some styling [@hvitfeldt_paletteer_2021].
+
 #### Tables
 
-@iannone_gt_2025
+I developed a means to apply formatting to every column in a table using a desired paletteer palette if desired. I'm also utilizing gt tables due to the degree I can customize output [@iannone_gt_2025]. Principles stemming from functional programming, in particular, are implemented here as they seem to be most appropriate to achieve the desired effect.
 
 ```{r}
 #| label: "r_table_theming()"
 #| code-summary: "Relatively hard-core table formatting code."
-# https://emilhvitfeldt.github.io/paletteer/
-# https://gt.rstudio.com
 
 library(gt)
 library(purrr)
@@ -130,7 +130,7 @@ r_table_theming <- function(r_df,
 
 #### Plots
 
-@wickham_ggplot2_2016
+I've developed functions to apply consistent theming to plots. Currently, I prefer R's ecosystem for outputs as they can be extensively customized [@wickham_ggplot2_2016].
 
 ```{r}
 #| label: "ggplot_theming()"
@@ -188,6 +188,7 @@ ggplot_theming_flipped_axes <- function() {
 ```{python}
 #| label: "makeDir"
 #| code-summary: "Check if the directory, 'data', exists."
+
 import os
 
 try:
@@ -198,7 +199,6 @@ except FileExistsError:
 
 ```{python}
 #| label: tbl-unzipping
-#| tbl-cap: "unzippers"
 #| code-summary: "Extracts the files and lists files."
 
 from zipfile import ZipFile
@@ -219,6 +219,8 @@ extracts = pd.DataFrame(
 ```
 
 ```{r}
+#| label: "tbl-dataDirectory"
+#| tbl-cap: "Files and folders"
 
 r_df <- py$extracts
 
@@ -246,9 +248,11 @@ rTable <- r_table_theming(r_df,
 rTable
 ```
 
-### Establish a Database Connection
+## Establish Connection
 
 ```{python}
+#| label: "establishConnection"
+
 import duckdb
 
 conn = duckdb.connect(':memory:')
@@ -256,9 +260,11 @@ conn.sql(f"SET memory_limit = '24GB';")
 conn.sql(f"SET default_order = 'ASC';")
 ```
 
-### New Data Types (Enums/Enumerations)
+## Setup Database
 
-I noticed that using ENUM data types significantly sped up many database operations [@holanda_duckdb_2021].
+### New Data Types
+
+I noticed that using Enum data types significantly sped up many database operations [@holanda_duckdb_2021].
 
 ```{python}
 #| label: "enum_series_to_dict"
@@ -389,11 +395,11 @@ createFrame = createFrame.sort_values(by = createFrame.columns.to_list(),
 pd.concat([dropFrame, createFrame], axis = 1)
 ```
 
-Not sure why the data had hyphens in the columns names, originally. These hyphens interfere with SQL query operations, so I have the mind to replace them with underscore characters. I'm not going to overwrite the original CSVs as I wish to maintain integrity and a clear trail of data processing steps. Also, having the original data to fall back on if need be, without re-downloading could be helpful.
+Not sure why the data had hyphens in the columns names, originally. These hyphens interfere with SQL query operations, so I have the mind to replace them with underscore characters. I'm not going to overwrite the original CSV's as I wish to maintain integrity and a clear trail of data processing steps. Also, having the original data to fall back on if need be, without re-downloading could be helpful.
 
-### Meaningful Database Pipeline Setup
+### Meaningful Pipeline
 
-Doing my best to apply transformations as I read the data into the database from the files to minimize steps needed to derive meaning from the data.
+Doing my best to apply as many transformations as I can while I read the data into the database from the files to minimize steps needed to derive meaning from the data.
 
 ```{python}
 #| label: "setupPipeline"
@@ -753,8 +759,6 @@ It might be useful to explore how the time of day and associated exposure to lig
 **Hypothesis**:\
 More time spent indoors on the internet might be associated with lower light exposure during daytime and higher light exposure during nighttime.
 
-**Test**:
-
 **Day**
 
 -   Q1_Q2
@@ -767,11 +771,9 @@ More time spent indoors on the internet might be associated with lower light exp
 
 -   Q3_max
 
-BMI Risk Categories [@zierle-ghosh_physiology_2024].
+The BMI risk categories found at, [@zierle-ghosh_physiology_2024], have been borrowed for this project. The SQL query syntax, therefore, aims to reflect a structure of evidence-based classification. Though not used in this project, it might be useful to classify lux statistics in a way that reflect a classification standard [@actigraphcorp_lux_2024].
 
-Lux Exposure Categories [@noauthor_lux_nodate].
-
-### Quartile of Lux by Hour of Day
+### Lux by Hour of Day Quantiles
 
 ```{python}
 #| label: "intermediateLighter()"
@@ -974,7 +976,6 @@ pal_df <- tibble(
   pals = list(
     eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
   )
-
 
 rTable <- r_table_theming(r_df,
                           title = "Quartile Data - Lights",
@@ -1762,6 +1763,7 @@ agePlot + ggplot_theming()
 ```
 
 ```{r}
+#| label: "fig-valtrainAccuracy"
 
 library(tidyr)
 
@@ -1796,6 +1798,8 @@ r_plot + ggplot_theming()
 ```
 
 ```{r}
+#| label: "fig-valtrainLogloss"
+
 library(tidyr)
 
 cv_df <- data.frame(
@@ -1840,6 +1844,7 @@ submission = pd.read_csv("data/sample_submission.csv")
 ```
 
 ```{python}
+#| label: "checkIdMatches"
 
 submission['id'] == test_results_renamed['id']
 ```
@@ -1857,7 +1862,9 @@ submission
 ## Close Connection
 
 ```{python}
+#| label: "closeConnection"
 #| eval: true
+
 try:
   conn.close()
   print(f"database connection closed")
