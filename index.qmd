@@ -6,8 +6,6 @@ authors:
     roles: data analysis
     corresponding: true
 
-
-
 bibliography: bibliography/references.bib
 citation-location: margin
 citations-hover: true
@@ -15,26 +13,23 @@ link-citations: true
 csl: bibliography/csl/apa.csl
 
 code-fold: true
+code-overflow: wrap
 
 lightbox: auto
+fig-responsive: true
 
 filters: 
   - nutshell
+
+table-of-contents: true
+toc-location: left
 ---
+
+Objective
 
 ## Rationale and Initial Thoughts
 
 The grounds for analyses in this case is the problematic behavior as it pertains to the subjects' experience and their parents' via questionnaires, physical fitness tests, worn instrument measurements and demographics. The resulting data is to be processed and connections drawn. [@santorelli_child_2024]
-
-There are quite a few variables to consider here. The largest amount of data was collected in real time. This was recorded by a device that could measure acceleration in 3D space, ambient light, time, and the quarter of the year while the participant went about their lives. Many health issues could stem from a lack of exercise. It may follow that the more someone is actively using the internet, the less likely they are to meet daily activity recommendations.
-
-Some issues is that it is uncertain where this feat of data collection took place. Perhaps, this was for the sake of privacy? The exact dates are not given for the real-time data either. So, we have to go by the quarter of the year and or season in that respect. Not sure if seasonal information is consequential to anything.
-
-The goal of the models is to, ultimately, make progress in the field of childhood to adolescent psychology. Progress, in this case, is defined by accurately predicting risks of undesirable outcomes based on a young persons' daily activities.
-
-Nowadays, life is centered around the internet. At the same time, our biology has not undergone any systemic changes. First hand experience certainly tells me that that high levels of internet activity can have a negative impact on the mind.
-
-Is the quantity of internet activity itself truly determinant of negative outcome? I think this is extremely limited as a hypothesis. Internet activity is not the same in all cases.
 
 ### Output
 
@@ -42,11 +37,13 @@ I used some notable packages to give the tables and plots some styling [@hvitfel
 
 #### Tables
 
-I developed a means to apply formatting to every column in a table using a desired paletteer palette if desired. I'm also utilizing gt tables due to the degree I can customize output [@iannone_gt_2025]. Principles stemming from functional programming, in particular, are implemented here as they seem to be most appropriate to achieve the desired effect.
+This is a means to apply formatting to every column in a table using a desired paletteer palette if desired using the gt tables. The high degree that I can customize output [@iannone_gt_2025]. Principles stemming from functional programming, in particular, are implemented here as they seem to be most appropriate to achieve the desired effect.
 
+::: code-fold-flex
 ```{r}
 #| label: "r_table_theming()"
-#| code-summary: "Relatively hard-core table formatting code."
+#| code-summary: "Hard-core table formatting code."
+#| warning: false
 
 library(gt)
 library(purrr)
@@ -54,7 +51,6 @@ library(tibble)
 library(reticulate)
 library(paletteer)
 
-# if (is.function(palette_name)) {return(palette_name(n, option)){}
 eval_palette <- function(pal_name, n = 10, pal_type, direction = NULL) {
   if (pal_type == "c") {
     return(paletteer_c(pal_name, n, direction))
@@ -70,10 +66,13 @@ r_table_theming <- function(r_df,
                             subtitle,
                             footnotes_df,
                             source_note,
-                            pal_df) {
+                            pal_df,
+                            multiline_feet = NULL,
+                            tbl_font_size = NULL,
+                            do_col_labels = FALSE) {
   
   r_table <- gt(r_df)
-  
+
   if(nrow(r_df) > 1) {
     r_table <- seq_len(nrow(pal_df)) |>
     reduce(\(acc, i) {
@@ -81,7 +80,6 @@ r_table_theming <- function(r_df,
         acc,
         palette = pal_df$pals[[i]],
         columns = pal_df$cols[[i]]
-        #target_columns = gt::everything()
         )
     },.init = r_table)
   }
@@ -91,20 +89,49 @@ r_table_theming <- function(r_df,
   
   r_table <- r_table |>
     tab_options(
-      heading.background.color = '#222',
-      heading.title.font.size = pct(150),
+      column_labels.padding = px(10),
+      column_labels.font.weight = "bold",
       column_labels.background.color = '#333',
-      table.background.color = '#222',
+      #column_labels.font.size = pct(115),
+      column_labels.border.top.width = px(0),
+      column_labels.border.bottom.color = 'black',
+      column_labels.vlines.width = px(1),
+      column_labels.border.lr.width = px(1),
+      column_labels.border.bottom.width = px(0),
+      column_labels.border.lr.color = 'black',
+      column_labels.vlines.color = 'black',
+      footnotes.padding = px(5),
       footnotes.background.color = '#222',
-      source_notes.background.color = '#222',
+      footnotes.sep = ", ",
+      footnotes.multiline = multiline_feet,
+      heading.padding = px(20),
+      heading.background.color = '#222',
+      heading.title.font.size = pct(125),
+      heading.border.bottom.width = px(0),
       row.striping.include_table_body	= TRUE,
-      row.striping.background_color = '#333'
+      row.striping.background_color = '#333',
+      source_notes.background.color = '#222',
+      table.margin.left = px(1),
+      table.margin.right = px(1),
+      table.align = "center",
+      table.border.top.width = px(0),
+      table.border.bottom.width = px(0),
+      table.background.color = '#222',
+      table.font.size = tbl_font_size,
+      table.layout = "auto",
+      table_body.hlines.color = 'black',
+      table_body.hlines.width = px(0),
+      table_body.vlines.width = px(0),
+      table_body.border.bottom.color = 'black',
+      table_body.border.top.color = 'black',
+      table_body.border.bottom.width = px(0),
+      table_body.border.top.width = px(0)
       )
   
   r_table <- r_table |>
     tab_source_note(source_note = source_note)
   
-      # Footnotes are added to the accumulator, building up to the final result
+  # Footnotes are added to the accumulator, building up to the final result
   r_table <- seq_len(nrow(footnotes_df)) |>
     reduce(\(acc, i) {
       tab_footnote(
@@ -115,8 +142,7 @@ r_table_theming <- function(r_df,
         )
       }, .init = r_table)
   
-  # && nrow(r_df) > 1
-  if(ncol(r_df) > 1) {
+  if(ncol(r_df) > 1 && do_col_labels == TRUE) {
       cell_col_fills = pal_df$pals[[1]]
       
       r_table <- seq_len(nrow(pal_df)) |>
@@ -133,30 +159,36 @@ r_table_theming <- function(r_df,
   }
 
 ```
+:::
 
 #### Plots
 
-I've developed functions to apply consistent theming to plots. Currently, I prefer R's ecosystem for outputs as they can be extensively customized [@wickham_ggplot2_2016].
+Alongside plotting, here are some relatively simpler functions developed with the intention to append and apply consistent theming to ggplots. R libraries are currently preferred for plotting outputs as they can be extensively customized [@wickham_ggplot2_2016].
 
+::: code-fold-flex
 ```{r}
 #| label: "ggplot_theming()"
-#| code-summary: "Hard-core plot theme code."
+#| code-summary: "Soft-core plot theme code."
 
 library(reticulate)
 library(ggplot2)
 
 # NORMAL AXES
 ggplot_theming <- function() {
-  theme_linedraw() +
+  theme_minimal() +
     theme(
       plot.title = element_text(color = 'white',
                                 size = rel(1.5)),
       plot.background = element_rect(fill = '#222'),
       panel.background = element_rect(fill = '#222'),
-      panel.grid.major.x = element_line(linetype = 'solid'),
-      panel.grid.minor.x = element_line(linetype = "dotted"),
-      panel.grid.major.y = element_line(linetype = 'dashed'),
-      panel.grid.minor.y = element_line(linetype = 'dotted'),
+      panel.grid.major.x = element_line(linetype = 'solid',
+                                        color = 'black'),
+      panel.grid.minor.x = element_line(linetype = "dotted",
+                                        color = 'gray'),
+      panel.grid.major.y = element_line(linetype = 'dashed',
+                                        color = 'black'),
+      panel.grid.minor.y = element_line(linetype = 'dotted',
+                                        color = 'gray'),
       axis.title = element_text(color = 'gray100'),
       axis.text = element_text(color = 'gray'),
       legend.background = element_rect(fill = '#222'),
@@ -166,8 +198,9 @@ ggplot_theming <- function() {
 
 # FLIPPED AXES
 ggplot_theming_flipped_axes <- function() {
-  theme_linedraw() +
+  theme_minimal() +
     theme(
+     # borders(color = "#222"),
       plot.title = element_text(color = 'white',
                                 size = rel(2)),
       plot.background = element_rect(fill = '#222'),
@@ -184,18 +217,23 @@ ggplot_theming_flipped_axes <- function() {
 }
 
 ```
+:::
 
 ## Import/Extract
 
+::: code-fold-flex
 ```{python}
 #| label: "mass import"
+#| code-summary: "Executed once to import the data from the Kaggle server. "
 #| eval: false
 !kaggle competitions download -c child-mind-institute-problematic-internet-use
 ```
+:::
 
+::: code-fold-flex
 ```{python}
 #| label: "makeDir"
-#| code-summary: "Check if the directory, 'data', exists."
+#| code-summary: "Checked if the directory, 'data', exists."
 
 import os
 
@@ -204,10 +242,12 @@ try:
 except FileExistsError:
   print(f"data exists")
 ```
+:::
 
+::: code-fold-flex
 ```{python}
 #| label: "extractUnzip"
-#| code-summary: "Extracts the files and lists files."
+#| code-summary: "Extracted the compressed files and list files."
 
 from zipfile import ZipFile
 import pandas as pd
@@ -225,10 +265,12 @@ extracts = pd.DataFrame(
   data = os.listdir(path = './data'), columns = ['./data'])
 
 ```
+:::
 
+::: code-fold-flex
 ```{r}
-#| label: "tbl-dataDirectory"
-#| tbl-cap: "Files and folders"
+#| label: "setupDataDirectory"
+#| code-summary: "Table setup."
 
 r_df <- py$extracts
 
@@ -238,7 +280,6 @@ locations_list = list("./data")
 # Create a table dataframe, or tibble, of footnotes
 footnotes_df <- tibble(notes = notes_list, locations = locations_list)
 
-#eval_palette("ggsci::legacy_tron", 7, 'd', 1)
 pal_df <- tibble(
   cols = list(
   "./data"),
@@ -252,33 +293,66 @@ rTable <- r_table_theming(r_df,
                           subtitle = NULL,
                           footnotes_df,
                           source_note = md("**source**: '/data/'"),
-                          pal_df)
+                          pal_df,
+                          tbl_font_size = pct(80))
 
+```
+:::
+
+:::table-flex
+```{r}
+#| label: "tbl-dataDirectory"
+#| tbl-cap: "Files and folders"
+#| echo: false
 rTable
 ```
+:::
 
 ## Establish Connection
 
+::: code-fold-flex
 ```{python}
 #| label: "establishConnection"
-
+#| code-summary: "Set up an in-memory database."
 import duckdb
 
 conn = duckdb.connect(':memory:')
-conn.sql(f"SET memory_limit = '24GB';")
-conn.sql(f"SET default_order = 'ASC';")
 ```
+:::
+
+```{python}
+#| label: "setMemoryLimit"
+#| code-summary: "Set the database memory limit."
+try:
+  conn.sql(f"SET memory_limit = '24GB';")
+  print(f"Successfully changed memory limit to 24GB")
+except:
+  print(f"An error occurred in changing the memory limit.")
+```
+
+
+```{python}
+#| label: "setOrder"
+#| code-summary: "Set the default ordering for the database."
+try:
+  conn.sql(f"SET default_order = 'ASC';")
+  print(f"Successfully changed the default order to ascending.")
+except:
+  print(f"The default order could not be changed.")
+
+```
+
 
 ## Setup Database
 
 ### New Data Types
 
-I noticed that using Enum data types significantly sped up many database operations, as suggested in this article [@holanda_duckdb_2021].
+I noticed that using enum data types significantly sped up many database operations, as suggested in this article [@holanda_duckdb_2021]. Enums are similar to the category data type in Python, and the factor datatype in R.
 
+::: code-fold-flex
 ```{python}
 #| label: "enum_series_to_dict"
-#| code-summary: "Defines the series and dictionary objects for enum functions."
-
+#| code-summary: "Data structures setup for new data types."
 import pandas as pd
 
 enums = ['internet_hours_enum'
@@ -350,10 +424,12 @@ if len(enumDict) == len(enums):
 else:
   print(f"drops and creates are not the same length")
 ```
+:::
 
+::: code-fold-flex
 ```{python}
 #| label: "try_create_drop()"
-#| code-summary: "Can there be a modular approach to creating and dropping ENUM types?\n \tYes."
+#| code-summary: "An approach for defining and verifying custom data types in the database."
 
 def try_create(conn,type_str: str, enum_str: str) -> pd.Series:
   """
@@ -401,18 +477,68 @@ createFrame = createFrame.sort_values(by = createFrame.columns.to_list(),
                                       ascending = True,
                                       ignore_index = True)
 
-pd.concat([dropFrame, createFrame], axis = 1)
+pydf = pd.concat([dropFrame, createFrame], axis = 1)
 ```
+:::
 
-Not sure why the data had hyphens in the columns names, originally. These hyphens interfere with SQL query operations, so I have the mind to replace them with underscore characters. I'm not going to overwrite the original CSV's as I wish to maintain integrity and a clear trail of data processing steps. Also, having the original data to fall back on if need be, without re-downloading could be helpful.
+::: code-fold-flex
+```{r}
+#| label: "enumDropcreate"
+#| code-summary: "Table setup"
 
-### Meaningful Pipeline
+r_df <- py$pydf
 
-Doing my best to apply as many transformations as I can while I read the data into the database from the files to minimize steps needed to derive meaning from the data.
+if (colnames(r_df[1]) == "did not exist"){
+  locations_list = list("did not exist", "created") 
+  notes_list =  list("Enums that did not exist.",
+                     "Enums that now exist.")
+  } else {
+  locations_list = list("dropped", "created")
+  notes_list =  list("Enums that were dropped.",
+                     "Enums that now exist.")
+  }
 
+# Create a table dataframe, or tibble, of footnotes
+footnotes_df <- tibble(notes = notes_list, locations = locations_list)
+
+#eval_palette("ggsci::legacy_tron", 7, 'd', 1)
+pal_df <- tibble(
+  cols = locations_list,
+  pals = list(eval_palette("pals::ocean.balance", 10, 'c', 1))
+  )
+
+#tbl_font_size = pct(80))
+rTable <- r_table_theming(r_df,
+                          title = "Custom Data Types",
+                          subtitle = NULL,
+                          footnotes_df,
+                          source_note = md("**source**: Kaggle"),
+                          pal_df,
+                          multiline_feet = TRUE,
+                          tbl_font_size = pct(80)
+                          )
+```
+:::
+
+:::table-flex
+```{r}
+#| label: "tbl-enumOutput"
+#| tbl-cap: "Enums dropped and created."
+#| echo: false
+rTable
+```
+:::
+
+### Initial Extraction Transformation and Load Pipeline
+
+::: p-1
+Transformations are applied while reading in data from files to minimize steps needed. Not sure why the data had hyphens in the columns names, originally. These hyphens interfere with SQL database queries, so it might be useful to replace them with underscore characters. There is no need to overwrite the original CSV's to maintain a clear trail of data trasformations.
+:::
+
+:::code-fold-flex
 ```{python}
 #| label: "setupPipeline"
-#| code-summary: "Does the extraction and initial transformation following download of compressed files."
+#| code-summary: "Initial data pipeline extraction, transformation and loading to the database."
 
 def setup_duckdb_pipeline(
   csvDict: dict, 
@@ -443,7 +569,6 @@ def setup_duckdb_pipeline(
 # Create tables from Parquet files
 def write_datasets (
   conn: duckdb.DuckDBPyConnection, parquetDict: dict):
-    
       try:
         {
           table_name: duckdb.sql(f"""
@@ -499,8 +624,11 @@ except:
   print(f"Could not set up data pipeline.")
   
 ```
-
+:::
+:::code-fold-flex
 ```{python}
+#| label: "verifyAT"
+#| code-summary: "Verify ActigraphyTrain in the database."
 
 pydf = conn.sql(f"""
 SELECT *
@@ -511,10 +639,11 @@ ORDER BY
   ,hour_of_day ASC
 LIMIT 10;""").df()
 ```
-
+:::
+:::code-fold-flex
 ```{r}
-#| label: tbl-ActigraphyTrain
-
+#| label: "ActigraphyTrainSetup"
+#| code-summary: "Table setup."
 
 r_df <- py$pydf
 
@@ -540,42 +669,40 @@ locations_list = list("id",
 # Create a table data-frame, or tibble, of footnotes
 footnotes_df <- tibble(
   notes = notes_list, 
-  locations = locations_list
-  )
+  locations = locations_list)
 
 pal_df <- tibble(
-  cols = list(
-    'id', 
-    'quarter', 
-    'weekday', 
-    'relative_date_PCIAT', 
-    'light', 
-    'hour_of_day'),
-  pals = list(
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1),
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1)
-    )
-  )
+  cols = locations_list,
+  pals = list(eval_palette("harrypotter::hufflepuff", 20, 'c', 1)))
 
 rTable <- r_table_theming(r_df,
                           title = "Actigraphy Data - Training Set",
                           subtitle = NULL,
                           footnotes_df,
                           source_note = md("**source**: Kaggle"),
-                          pal_df
+                          pal_df,
+                          multiline_feet = TRUE
+                          #tbl_font_size = pct(85)
                           )
+```
+:::
 
+:::table-flex
+```{r}
+#| label: "tbl-ActigraphyTrain"
+#| tbl-cap: "A preview of ActigraphyTrain database table."
+#| echo: false
 rTable
 ```
+:::
+
 
 ## EDA
 
+:::code-fold-flex
 ```{python}
 #| label: "create_table_with_regex_columns()"
+#| code-summary: "Creates several tables based on column label strings."
 #| warning: false
 
 import re
@@ -686,17 +813,15 @@ for new_table_name, regex_pattern in regex_dict_test.items():
     ,col_dict
     )
 
-#conn.sql(f"DROP TABLE TrainCsv;")
-#conn.sql(f"DROP TABLE TestCsv;")
-
 ```
+:::
 
+:::code-fold-flex
 ```{python}
 #| label: "joinDemoAndActigraphyOnId"
 #| code-summary: "Perform a join on matching Ids to combine demographics data with actigraphy data such as time and light exposure."
-#| output: false
 
-conn.sql(f"""
+conn.sql("""
 CREATE OR REPLACE TABLE IntermediateActigraphy AS
 SELECT id
        ,basic_demos_enroll_season::TEXT::enroll_season_enum AS enroll_season
@@ -709,7 +834,7 @@ ORDER BY
   id ASC;
 """)
 
-conn.sql(f"""
+conn.sql("""
 CREATE OR REPLACE TABLE 
   ActigraphyTrain
 AS
@@ -727,7 +852,7 @@ AS
     ia.id = at.id;
 """)
 
-conn.sql(f"""
+conn.sql("""
 CREATE OR REPLACE TABLE IntermediateActigraphy AS
 SELECT
   id
@@ -740,7 +865,7 @@ ORDER BY
   id ASC;
 """)
 
-conn.sql(f"""
+conn.sql("""
 CREATE OR REPLACE TABLE 
   ActigraphyTest
 AS
@@ -758,40 +883,34 @@ AS
     ia.id = at.id;
 """)
 
-conn.sql(f"""
-DROP TABLE IntermediateActigraphy;
-""")
+conn.sql("DROP TABLE IntermediateActigraphy;")
 
-conn.sql(f"CHECKPOINT;")
-
+try:
+ conn.sql(f"CHECKPOINT;")
+ print(f"Cleared unused allocated space from memory.")
+except:
+  print(f"Could not clear from memory.")
+#
 ```
+:::
 
 ### Actigraphy, Physical, and Demographics
-
+:::p-1
+:::
 It might be useful to explore how the time of day and associated exposure to light might correlate to other factors, such as sii, physical characteristics, and internet use.
 
 **Hypothesis**:\
-More time spent indoors on the internet might be associated with lower light exposure during daytime and higher light exposure during nighttime.
+More time spent indoors on the internet might be associated with lower light exposure during daytime (Q1-Q2, Q2-Q3) and higher light exposure during nighttime (min-Q1, Q3-max).
 
-**Day**
+The BMI risk categories found at, [@zierle_physiology_2024], have been borrowed for this project. The SQL query syntax, therefore, aims to reflect a structure of evidence-based classification. Though not used in this project, it might be useful to classify lux statistics in a way that reflect a classification standard [@actigraphcorp_lux_2024].
 
--   Q1_Q2
+### Lux by Hour of Day Quartile
 
--   Q2_Q3
-
-**Night**
-
--   min_Q1
-
--   Q3_max
-
-The BMI risk categories found at, [@zierle-ghosh_physiology_2024], have been borrowed for this project. The SQL query syntax, therefore, aims to reflect a structure of evidence-based classification. Though not used in this project, it might be useful to classify lux statistics in a way that reflect a classification standard [@actigraphcorp_lux_2024].
-
-### Lux by Hour of Day Quantiles
-
+:::code-fold-flex
 ```{python}
-#| label: "intermediateLighter()"
-#| code-summary: "Extract actigraphy data based on time of day quartiles"
+#| label: "intermediateLighter"
+#| code-summary: "Extract actigraphy data based on the time of day quartile"
+#| output: false
 
 def quartiler(
   conn: duckdb.duckdb, 
@@ -902,8 +1021,6 @@ def joinLights (from_to_tables: dict) -> None:
 
     intermediateLighter(conn, new_tables, quarters, quartuples, from_table)
   
-    #conn.sql(f"CHECKPOINT;")
-  
     conn.sql(f"""
     CREATE OR REPLACE TABLE {to_table} AS
     SELECT 
@@ -921,7 +1038,6 @@ def joinLights (from_to_tables: dict) -> None:
     for table in new_tables:
       conn.sql(f"DROP TABLE {table};")
       
-
 quartuples = pd.Series(
   data = 
   [('min','Q1')
@@ -939,18 +1055,31 @@ from_to_tables = {
   ,'ActigraphyTest': 'AggregatedLightsTest'
   }
 
-joinLights(from_to_tables)
-
+try:
+  joinLights(from_to_tables)
+  pydf = conn.sql(f"SELECT * FROM AggregatedLights LIMIT 10;").df()
+  print(f"Joined the lux tables and saved a preview of the aggregated table.")
+except:
+  print(f"Lux tables were not joined.")
+  
 ```
+:::
 
 ```{python}
-conn.sql(f"CHECKPOINT;")
-
-pydf = conn.sql(f"SELECT * FROM AggregatedLights LIMIT 10;").df()
+#| label: "checkpointLights"
+#| code-summary: "Free unused database memory from dropped tables and such."
+try:
+  conn.sql(f"CHECKPOINT;")
+  print(f"Cleared unused memory.")
+except:
+  print(f"Could not clean unused memory.")
 ```
 
+
+:::code-fold-flex
 ```{r}
-#| label: tbl-AggregatedLights
+#| label: "aggLightSetup"
+#| code-summary: "Table setup"
 
 r_df <- py$pydf
 
@@ -984,7 +1113,7 @@ footnotes_df <- tibble(notes = notes_list,
 pal_df <- tibble(
   cols = locations_list,
   pals = list(
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
+    eval_palette("harrypotter::slytherin", 20, 'c', 1))
   )
 
 rTable <- r_table_theming(r_df,
@@ -992,13 +1121,24 @@ rTable <- r_table_theming(r_df,
                           subtitle = NULL,
                           footnotes_df,
                           source_note = md("**source**: Kaggle"),
-                          pal_df)
-
-rTable
-
+                          pal_df,
+                          multiline_feet = TRUE)
 ```
+:::
 
+:::table-flex
+```{r}
+#| label: "tbl-AggregatedLights"
+#| tbl-cap: "Quantiles related to mean lux exposure."
+#| echo: false
+rTable
+```
+:::
+
+:::code-fold-flex
 ```{python}
+#| label: "Create tables from the lights dictionary."
+#| code-summary: "Join light data with internet use hours data."
 
 lightsDict = {
   'AggregatedLights': 'InternetUse', 
@@ -1019,10 +1159,15 @@ for from_tbl, join_tbl in lightsDict.items():
       ft.id = jt.id;
   """)
 ```
+:::
 
-Checking the internet use hours parameter to get an overview along with null percentage to see if we might be able to use it, as-is, for joining with light quartiles.
+Checking the internet use hours parameter to get an overview along with null percentage to see if we might be able to use it, as-is, for joining with the corresponding lux quartile.
 
+:::code-fold-flex
 ```{python}
+#| label: "describeSummary"
+#| code-summary: "Potentially useful for quick stats."
+#| include: false
 
 all_al = conn.sql(f"SELECT * FROM AggregatedLightsTest;").df()
 pyDescribe = all_al.describe()
@@ -1036,12 +1181,14 @@ FROM AggregatedLightsTest;
 duckSummary = duckSummary.set_index('column_name')
 
 pyDescribe, duckSummary
-
 ```
+:::
 
-Group-averaging sii, internet use hours, and pre-averaged lux quartiles by age and sex.
 
+:::code-fold-flex
 ```{python}
+#| label: "aggLights"
+#| code-summary: "Group-averaging sii, internet use hours, and pre-averaged lux quartile by age and sex."
 
 pydf = conn.sql(f"""
 SELECT
@@ -1057,12 +1204,15 @@ FROM
 GROUP BY 
   useHrs;""").df()
 
-obsSum = pydf.observations.sum()
+#obsSum = pydf.observations.sum()
+
 pydf = pydf.dropna()
 ```
-
+:::
+:::code-fold-flex
 ```{r}
-#| label: tbl-lightUseHrs
+#| label: "lightUseHrs"
+#| code-summary: "Table setup"
 
 r_df <- py$pydf
 
@@ -1086,7 +1236,6 @@ locations_list = list(
   "q4"
   )
 
-# Create a table dataframe, or tibble, of footnotes
 footnotes_df <- tibble(
   notes = notes_list, 
   locations = locations_list
@@ -1095,7 +1244,7 @@ footnotes_df <- tibble(
 pal_df <- tibble(
   cols = locations_list,
   pals = list(
-    eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
+    eval_palette("harrypotter::gryffindor", 20, 'c', 1))
   )
 
 rTable <- r_table_theming(r_df,
@@ -1103,14 +1252,26 @@ rTable <- r_table_theming(r_df,
                           subtitle = NULL,
                           footnotes_df,
                           source_note = md("**source**: Kaggle"),
-                          pal_df
+                          pal_df,
+                          multiline_feet = FALSE
                           )
+```
+:::
 
+:::table-flex
+```{r}
+#| label: "tbl-useToSii"
+#| tbl-cap: "Grouped averages of lux to sii."
+#| echo: false
 rTable
 ```
+:::
 
+:::code-fold-flex
 ```{r}
-#| label: "fig-useSii"
+#| label: "useSiiSetup"
+#| code-summary: "Plot setup"
+#| message: false
 
 library(scales)
 
@@ -1123,11 +1284,20 @@ r_plot <- ggplot(data = r_df,
        x = 'Hours of Internet Use', 
        y = "Problematic Behavior Index (sii)")
 
-r_plot + ggplot_theming()
+r_plot <- r_plot + ggplot_theming()
+```
+:::
+
+```{r}
+#| label: "fig-useSii"
+#| fig-cap: "Categorized bmi risk to internet use and sii."
+#| echo: false
+r_plot
 ```
 
+:::code-fold-flex
 ```{python}
-#| label: "caseWhenUnionBMI"
+#| label: "caseWhenUnionBmi"
 #| code-summary: "Combining SQL with Python data structures to organized data according to several conditions, such as: bmi, age, sex, and waist_circumference."
 
 riskyDictionary = {
@@ -1209,13 +1379,14 @@ SELECT * EXCLUDE(risk_cat) FROM Risk3
 UNION BY NAME 
 SELECT * EXCLUDE(risk_cat) FROM Risk4;
 """)
-
-conn.execute(f"CHECKPOINT")
 ```
-
+:::
+:::code-fold-flex
 ```{python}
+#| label: "riskCatPy"
+#| code-summary: "Grouped averaging by risk category."
 
-conn.execute(f"""
+conn.sql("""
 CREATE OR REPLACE TABLE RiskCategorySummary AS
 SELECT 
   risk_category
@@ -1231,25 +1402,31 @@ GROUP BY
   risk_category;
 """)
 
-pydf = conn.execute(f"""
+pydf = conn.sql("""
 SELECT * 
 FROM RiskCategorySummary;
 """).df()
 
 ```
-
+:::
+:::code-fold-flex
 ```{r}
-#| label: tbl-riskefe
+#| label: "diseaseriskLux"
+#| code-summary: "Table setup"
 
 r_df <- py$pydf
 
 notes_list =  list("The disease risk category.",
+                   "Problematic behavior index.",
+                   "Reported interet usage (hours).",
                    "12am to 6am",
                    "6am to 12pm.",
                    "12pm to 6pm",
                    "6pm to 12am")
 
 locations_list = list("risk_category"
+                      ,"sii"
+                      ,"useHrs"
                       ,"q1"
                       ,"q2"
                       ,"q3"
@@ -1261,7 +1438,7 @@ footnotes_df <- tibble(notes = notes_list,
 
 pal_df <- tibble(
   cols = locations_list,
-  pals = list(eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
+  pals = list(eval_palette("harrypotter::ravenclaw", 20, 'c', 1))
   )
 
 rTable <- r_table_theming(r_df,
@@ -1269,18 +1446,28 @@ rTable <- r_table_theming(r_df,
                           subtitle = NULL,
                           footnotes_df,
                           source_note = md("**source**: Kaggle"),
-                          pal_df
+                          pal_df,
+                          multiline_feet = TRUE
                           )
-
-rTable
-
 ```
+:::
 
+:::table-flex
 ```{r}
-#| label: "tbl-quarterLux"
+#| label: "tbl-diseaseRiskLux"
+#| tbl-cap: "Disease risk categories by lux exposure."
+#| echo: false
+rTable
+```
+:::
+
+:::code-fold-flex
+```{r}
+#| label: "elongateQuarterLux"
+#| code-summary: "Pivoting the data longer to accommodate more useful plot output."
+#| message: false
 
 library(tidyr)
-library(ggplot2)
 library(dplyr)
 
 data_long <- r_df |>
@@ -1293,12 +1480,12 @@ data_long <- r_df |>
                                      "q2",
                                      "q3",
                                      "q4")))
-
-data_long
 ```
-
+:::
+:::code-fold-flex
 ```{r}
-#| label: "fig-luxRiskTimePeriods"
+#| label: "luxRiskSetup"
+#| code-summary: "Plot setup"
 
 r_plot <- ggplot(data = data_long, 
                  aes(x = quarter, 
@@ -1312,19 +1499,26 @@ r_plot <- ggplot(data = data_long,
        y = "Mean Lux Value",
        color = "Risk Category")
 
-r_plot + ggplot_theming()
+r_plot <- r_plot + ggplot_theming()
 
 ```
+:::
+
+```{r}
+#| label: "fig-luxRiskTime"
+#| fig-cap: "Grouped risk by lux and time period."
+#| echo: false
+r_plot
+```
+
 
 ### Summary Profiles
 
-```{python}
-info_tables = conn.sql(f"Select * From main.duckdb_tables;").df()
-```
-
+:::code-fold-flex
 ```{python}
 #| label: "summaryProfiles"
-#| code-summary: "Create training and testing data profiles from summary statistics to better inform modeling choices."
+#| code-summary: "Create future training and testing data profiles from summary statistics to inform modeling choices."
+#| message: false
 
 summary_dict = {
   'ActigraphyTrain': 
@@ -1344,1246 +1538,28 @@ summary_dict = {
 summary_frame = pd.DataFrame(summary_dict)
 
 for key, value in summary_frame.items():
-  
-  py_summary_df = conn.execute(
-    f"SUMMARIZE SELECT * FROM '{key}';").df()
-    
-  conn.register(value[0], py_summary_df)
-
-  conn.sql(
-    f"COPY {value[0]} TO '{value[1]}' (HEADER , DELIMITER ',');")  
-
+  try:
+    py_summary_df = conn.sql(f"SUMMARIZE SELECT * FROM '{key}';").df()
+    conn.register(value[0], py_summary_df)
+    conn.sql(f"COPY {value[0]} TO '{value[1]}' (HEADER , DELIMITER ',');")
+    print(f"'{value[1]}' was written")
+  except:
+    print(f"'{value[1]}' was not written")
 ```
-
-Might be useful: Visualize summary data
+:::
 
 ```{python}
-
-pydf = conn.sql(f"""
-SELECT *
-FROM ActigraphyTrainSummary;""").df()
-
-pydf
-```
-
-### ML Paramter Rationale
-
-Key Parameters in lgb_params
-
-This may or may not be optimal, but I am trying new things and showing my work as I go, so to speak. Since `sii` is a multi-class categorical variable, the task is a classification problem. Adjusting the `lgb_params`, evaluation metrics, and handling predictions ensures the model correctly interprets and solves the problem.
-
-**Categorical target (sii)**:
-
-When the target is discrete (as in the case for sii, or, 'Severity Impairment Index'), it indicates a classification problem. A classification objective and corresponding evaluation metrics (e.g., accuracy, log loss) might be appropriate.
-
-### [:A deeper explanation of model parameter selections](#lgb)
-
-1.  **`objective`: `'multiclass'`**
-
-    -   Specifies the learning objective of the model.
-
-    -   `'multiclass'` is used when the target variable is categorical with more than two classes.
-
-    -   Since the target variable (`sii`) has four possible values (0, 1, 2, 3), this is the appropriate choice.
-
-2.  **`metric`: `'multi_logloss'`**
-
-    -   Metric used to evaluate the model's performance during training.
-
-    -   `'multi_logloss'` (Multi-class Logarithmic Loss) measures how well the predicted probability distributions match the actual class labels.
-
-    -   Lower values indicate better performance. It's commonly used for classification tasks.
-
-3.  **`num_class`: `4`**
-
-    -   Specifies the number of unique classes in the target variable.
-
-    -   Since `sii` has four possible values (0, 1, 2, 3), `num_class` is set to `4`.
-
-4.  **`num_leaves`**
-
-    -   **Purpose**: Determines the complexity of the trees.
-
-    -   **Value**: `31`
-
-        -   Higher values allow the model to capture more interactions between features but can lead to overfitting if too high.
-
-        -   A smaller value may be used for simpler problems or to prevent overfitting.
-
-5.  **`learning_rate`**
-
-    -   **Purpose**: The step size for updating model weights during training.
-
-    -   **Value**: `0.05`
-
-        -   A smaller value makes the model learn slowly, often improving generalization.
-
-        -   If one lowers `learning_rate`, they may need to increase `num_boost_round` (number of training iterations).
-
-6.  **`feature_fraction`**
-
-    -   **Purpose**: The proportion of features to randomly sample for each iteration of training.
-
-    -   **Value**: `0.9`
-
-        -   Prevents overfitting by forcing the model to rely on different subsets of features.
-
-        -   A value close to 1 means most features are used, while smaller values increase regularization.
-
-7.  **`bagging_fraction`**
-
-    -   **Purpose**: The proportion of training samples to randomly sample for each iteration of training.
-
-    -   **Value**: `0.8`
-
-        -   Similar to `feature_fraction`, but applied to the training data.
-
-        -   Helps the model generalize better by using only a subset of the data.
-
-8.  **`bagging_freq`**
-
-    -   **Purpose**: The frequency (in terms of iterations) at which bagging (random sampling) is applied.
-
-    -   **Value**: `5`
-
-        -   Bagging is applied every 5 iterations.
-
-        -   A value of `0` disables bagging.
-
-9.  **`verbose`**
-
-    -   **Purpose**: Controls the verbosity of the training process.
-
-    -   **Value**: `-1`
-
-        -   Suppresses output unless there's an error.
-
-        -   A value of `1` or `2` provides more detailed output during training.
-
-### ML Pipeline
-
-```{python}
-import os
-
-try:
-  os.mkdir('./data/output')
-except FileExistsError:
-  print(f"data/output exists")
-```
-
-SQL Optimization: Queries are pre-aggregated and load only required columns.
-
-Memory Efficiency: Lazy loading with DuckDB ensures only necessary data is processed.
-
-Scalability: The pipeline supports chunking or streaming for large datasets.
-
-```{python}
-#| label: "mlPipe"
-#| output: false
-
-import duckdb
-import numpy as np
-import pandas as pd
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.metrics import log_loss, accuracy_score
-import lightgbm as lgb
-import optuna
-from typing import Dict, Any, Tuple
-import json
-
-# Set random seed
-SEED = 14
-np.random.seed(SEED)
-
-# Optimized Data Loading
-def load_and_merge_data_optimized(
-    conn: duckdb.DuckDBPyConnection, 
-    dataset_type: str
-    ) -> pd.DataFrame:
-    """
-    Optimized function to load, aggregate, and merge data using DuckDB.
-    """
-    if dataset_type == 'train':
-        query = """
-        WITH TrainBase AS (
-            SELECT id,
-                   COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
-                   COALESCE(MODE(basic_demos_sex::INTEGER), 0) AS sex,
-                   COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
-                   COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
-                   COALESCE(AVG(physical_height::FLOAT), 0) AS height,
-                   COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
-                   COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate,
-                   COALESCE(MAX(sii::INTEGER), 0) AS sii
-            FROM TrainCsv
-            GROUP BY id
-        ),
-        TrainActivity AS (
-            SELECT id,
-                   COALESCE(AVG(light::FLOAT), 0) AS light_mean,
-                   COALESCE(MAX(light::FLOAT), 0) AS light_max,
-                   COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
-                   COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
-            FROM ActigraphyTrain
-            GROUP BY id
-        )
-        SELECT 
-          TrainBase.*, 
-          TrainActivity.light_mean, 
-          TrainActivity.light_std
-        FROM TrainBase
-        LEFT JOIN TrainActivity USING (id);
-        """
-    elif dataset_type == 'test':
-        query = """
-        WITH TestBase AS (
-            SELECT id,
-                   COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
-                   COALESCE(MODE(basic_demos_sex::INTEGER), 0) AS sex,
-                   COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
-                   COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
-                   COALESCE(AVG(physical_height::FLOAT), 0) AS height,
-                   COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
-                   COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate
-            FROM TestCsv
-            GROUP BY id
-        ),
-        TestActivity AS (
-            SELECT id,
-                   COALESCE(AVG(light::FLOAT), 0) AS light_mean,
-                   COALESCE(MAX(light::FLOAT), 0) AS light_max,
-                   COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
-                   COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
-            FROM ActigraphyTest
-            GROUP BY id
-        )
-        SELECT 
-          TestBase.*, 
-          TestActivity.light_mean, 
-          TestActivity.light_max,
-          TestActivity.light_std,
-          TestActivity.common_quarter
-        FROM TestBase
-        LEFT JOIN TestActivity USING (id);
-        """
-    else:
-      raise ValueError("Invalid dataset_type. Must be 'train' or 'test'.")
-    
-    return conn.execute(query).df()
-
-# Prepare Data
-def prepare_data(
-    conn: duckdb.DuckDBPyConnection, 
-    dataset_type: str, 
-    target_col: str = None
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
-    """
-    Prepare the data for training or testing.
-    """
-    df = load_and_merge_data_optimized(conn, dataset_type)
-    X = df.drop(columns = ['id', target_col], errors = 'ignore')
-    y = df[target_col].values if target_col and target_col in df else None
-    return df, X, y
-
-def objective(trial, conn, target_col):
-    """
-    Optuna objective function to optimize LightGBM hyperparameters.
-    """
-    # Load data
-    _, X, y = prepare_data(conn, 'train', target_col)
-    tss = TimeSeriesSplit(n_splits = 5)
-    
-    # Define hyperparameter space
-    params = {
-        'objective': 'multiclass',
-        'metric': 'multi_logloss',
-        'num_class': 4,  # Ensure the number of classes matches the dataset
-        'boosting_type': 'gbdt',
-        'num_leaves': trial.suggest_int('num_leaves', 20, 50),
-        'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1, log=True),
-        'feature_fraction': trial.suggest_float('feature_fraction', 0.5, 1.0),
-        'bagging_fraction': trial.suggest_float('bagging_fraction', 0.5, 1.0),
-        'bagging_freq': trial.suggest_int('bagging_freq', 1, 10),
-        'lambda_l1': trial.suggest_float('lambda_l1', 1e-3, 10.0, log=True),
-        'lambda_l2': trial.suggest_float('lambda_l2', 1e-3, 10.0, log=True),
-        'seed': SEED,
-        'verbose': -1
-    }
-
-    # Cross-validation
-    val_loglosses = []
-
-    for train_idx, val_idx in tss.split(X):
-        X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
-        y_train, y_val = y[train_idx], y[val_idx]
-        
-        # Create LightGBM datasets
-        train_data = lgb.Dataset(X_train, label=y_train)
-        val_data = lgb.Dataset(X_val, label=y_val)
-
-        # Train the model
-        model = lgb.train(
-            params,
-            train_set = train_data,
-            valid_sets = [val_data],
-            valid_names = ['valid'],
-            num_boost_round = 100
-            #early_stopping_rounds=10,
-           # verbose_eval=False  # Suppress output
-        )
-        
-        # Make predictions and compute validation log loss
-        val_preds = model.predict(X_val)  # This produces probabilities
-        val_logloss = log_loss(y_val, val_preds)
-        val_loglosses.append(val_logloss)
-
-    # Compute summary statistics
-    mean_logloss = np.mean(val_loglosses)
-    std_logloss = np.std(val_loglosses)
-
-    # Save results and summary in user_attrs
-    trial.set_user_attr("cv_results", val_loglosses)
-    trial.set_user_attr("cv_summary", {
-        "mean_logloss": mean_logloss,
-        "std_logloss": std_logloss
-    })
-
-    # Return the mean validation log loss (minimize this)
-    return mean_logloss
-
-# Hyperparameter Tuning with Optuna
-def tune_hyperparameters(conn, target_col, n_trials = 50):
-    """
-    Tune LightGBM hyperparameters using Optuna and save CV results/summary.
-    """
-    # Create a study object
-    study = optuna.create_study(direction="minimize")
-
-    # Optimize using the custom objective function
-    study.optimize(
-        lambda trial: objective(trial, conn, target_col),
-        n_trials=n_trials
-    )
-
-    # Retrieve the best trial
-    best_trial = study.best_trial
-
-    # Safely extract `cv_results` and `cv_summary`
-    cv_results = best_trial.user_attrs.get("cv_results", {})
-    cv_summary = best_trial.user_attrs.get("cv_summary", {})
-
-    # Create output directory if it doesn't exist
-    os.makedirs("data/output", exist_ok = True)
-
-    # Save the results to JSON files
-    with open("data/output/cv_summary.json", "w") as f:
-        json.dump(cv_summary, f)
-
-    with open("data/output/cv_results.json", "w") as f:
-        json.dump(cv_results, f)
-
-    return study
-
-from sklearn.metrics import accuracy_score, log_loss
-
-def train_final_model(conn, target_col, lgb_params, save_model=True):
-    """
-    Train the final LightGBM model using the best hyperparameters, save it, 
-    and return training/validation metrics.
-    """
-    # Prepare training data
-    _, X_train, y_train = prepare_data(conn, 'train', target_col)
-    
-    # Split the training data into a training and validation set
-    # 80% for training, 20% for validation
-    train_size = int(0.8 * len(X_train)) 
-    X_train_split = X_train[:train_size]
-    y_train_split = y_train[:train_size]
-    X_val_split = X_train[train_size:]
-    y_val_split = y_train[train_size:]
-
-    # Create LightGBM datasets
-    train_data = lgb.Dataset(X_train_split, label=y_train_split)
-    val_data = lgb.Dataset(X_val_split, label=y_val_split, reference=train_data)
-
-    # Train the model
-    model = lgb.train(
-        lgb_params,
-        train_set = train_data,
-        valid_sets = [train_data, val_data],
-        valid_names = ["train", "valid"],
-        num_boost_round = 100
-        #early_stopping_rounds=10,
-        #verbose_eval=False  # Suppress training output
-    )
-
-    # Get predictions for training and validation sets
-    y_train_pred = model.predict(X_train_split)
-    y_val_pred = model.predict(X_val_split)
-
-    # Convert predictions to class labels
-    y_train_pred_labels = y_train_pred.argmax(axis = 1)
-    y_val_pred_labels = y_val_pred.argmax(axis = 1)
-
-    # Compute metrics
-    train_accuracy = accuracy_score(y_train_split, y_train_pred_labels)
-    val_accuracy = accuracy_score(y_val_split, y_val_pred_labels)
-    train_logloss = log_loss(y_train_split, y_train_pred)
-    val_logloss = log_loss(y_val_split, y_val_pred)
-
-    # Print or log the metrics
-    print(f"Train Accuracy: {train_accuracy:.4f}, Train Log Loss: {train_logloss:.4f}")
-    
-    print(f"Validation Accuracy: {val_accuracy:.4f}, Validation Log Loss: {val_logloss:.4f}")
-
-    if save_model:
-        # Ensure the output directory exists
-        output_dir = "data/model_output/"
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Save the model
-        model.save_model(os.path.join(output_dir, "final_lightgbm_model.txt"))
-
-    # Return the model and metrics
-    return model, {
-        "train_accuracy": train_accuracy,
-        "val_accuracy": val_accuracy,
-        "train_logloss": train_logloss,
-        "val_logloss": val_logloss
-    }
-
-def predict_test_data(
-  conn, target_col, model_file = "data/model_output/final_lightgbm_model.txt"):
-    """
-    Load the test data and make predictions using the trained model.
-    """
-    # Prepare test data
-    test_df, X_test, _ = prepare_data(conn, 'test', target_col = "sii")
-    
-    # Load the trained model
-    model = lgb.Booster(
-      model_file = model_file)
-    
-    # Make predictions
-    # Outputs probabilities for multiclass classification
-    predictions = model.predict(
-      X_test, predict_disable_shape_check = True) 
-    
-    # Optionally return predictions along with IDs for traceability
-    return test_df['id'], predictions
-
-
-if __name__ == "__main__":
-  
-    target_col = 'sii'
-
-    # Tune hyperparameters and save CV results/summary
-    study = tune_hyperparameters(
-      conn, target_col, n_trials = 50)
-      
-    print("Best Parameters:", study.best_params)
-
-    # Train final model with best parameters
-    best_params = study.best_params
-    best_params.update(
-      {'objective': 'multiclass', 
-      'metric': 'multi_logloss', 
-      'num_class': 4})
-    
-    final_model, metrics = train_final_model(conn, target_col, best_params)
-
-    print("Final Model Metrics:")
-    
-    print(f"Train Accuracy: {metrics['train_accuracy']:.4f}, Train Log Loss: {metrics['train_logloss']:.4f}")
-    
-    print(f"Validation Accuracy: {metrics['val_accuracy']:.4f}, Validation Log Loss: {metrics['val_logloss']:.4f}")
-
-    # Save the final model predictions
-    test_ids, test_predictions = predict_test_data(conn, target_col)
-    
-    os.makedirs("data/output", exist_ok = True)
-    
-    predictions_df = pd.DataFrame({
-        'id': test_ids,
-        'predictions': test_predictions.argmax(axis=1)  # Get predicted class
-    })
-    
-    predictions_df.to_csv("data/output/test_predictions.csv", index = False)
-
-    print("Predictions saved to data/output/test_predictions.csv")
-
-```
-
-```{python}
-import pandas as pd
-import numpy as np
-import duckdb
-import lightgbm as lgb
-import optuna
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
-
-# ======================
-# 1. Load and Merge Data
-# ======================
-def load_and_merge_data(conn, dataset_type: str):
-  
-  if dataset_type == 'train':
-    query = f"""
-    WITH TrainBase AS (
-      SELECT 
-        id,
-        COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
-        COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
-        COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
-        COALESCE(AVG(physical_height::FLOAT), 0) AS height,
-        COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
-        COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate,
-        COALESCE(MAX(sii), 0) AS sii -- Target column
-      FROM TrainCsv
-      GROUP BY id
-      ),
-      TrainActivity AS (
-        SELECT 
-          id,
-          COALESCE(AVG(light::FLOAT), 0) AS light_mean,
-          COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
-          COALESCE(MAX(light::FLOAT), 0) AS light_max,
-          COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
-          COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
-          COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
-        FROM ActigraphyTrain
-        GROUP BY id
-        )
-        SELECT *
-        FROM TrainBase
-        LEFT JOIN TrainActivity USING (id);
-        """
-    elif dataset_type == 'test':
-        query = f"""
-        WITH TestBase AS (
-            SELECT id,
-                   COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
-                   COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
-                   COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
-                   COALESCE(AVG(physical_height::FLOAT), 0) AS height,
-                   COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
-                   COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate
-            FROM TestCsv
-            GROUP BY id
-        ),
-        TestActivity AS (
-            SELECT id,
-                   COALESCE(AVG(light::FLOAT), 0) AS light_mean,
-                   COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
-                   COALESCE(MAX(light::FLOAT), 0) AS light_max,
-                   COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
-                   COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
-                   COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
-            FROM ActigraphyTest
-            GROUP BY id
-        )
-        SELECT *
-        FROM TestBase
-        LEFT JOIN TestActivity USING (id);
-        """
-    else:
-      raise ValueError("Invalid dataset_type. Must be 'train' or 'test'.")
-    
-    return conn.execute(query).df()
-
-   # Load Test and Train datasets
-   # test_data = conn.execute(f"SELECT * FROM TestCsv;").df()
-   # train_data = conn.execute(f"SELECT * FROM TrainCsv;").df()
-
-   # Load Actigraphy data
-   # actigraphy_test_data = conn.execute(f"SELECT * FROM ActigraphyTest;").df()
-   # actigraphy_train_data = conn.execute(f"SELECT * FROM ActigraphyTrain;").df()
-
-    # Merge datasets on 'id'
-   # test = pd.merge(test_data, actigraphy_test_data, on = "id", how = "left")
-   # train = pd.merge(train_data, actigraphy_train_data, on = "id", how = "left")
-
-    return train, test
-
-
-# =======================
-# 2. Feature Engineering
-# =======================
-#def feature_engineering(df):
-#    # Ensure no missing values in numeric columns
-#    df.fillna(0, inplace = True)
-#    return df
-
-
-# ============================
-# 3. Prepare Features and Target
-# ============================
-def prepare_features_and_target(train, test, target_col = 'sii'):
-    # Separate features (X) and target (y)
-    X_train = train.drop(columns = [target_col])
-    y_train = train[target_col]
-    X_test = test.drop(columns = [target_col])
-    y_test = test[target_col]
-    return X_train, y_train, X_test, y_test
-
-
-# =====================
-# 4. Define Objective
-# =====================
-def objective(trial, X_train, X_val, y_train, y_val):
-    params = {
-        "objective": "multiclass",
-        "metric": "multi_logloss",
-        "num_class": 4,  # Update based on number of classes
-        "boosting_type": trial.suggest_categorical(
-          "boosting_type", ["gbdt", "dart", "goss"]),
-        "learning_rate": trial.suggest_loguniform("learning_rate", 1e-4, 0.1),
-        "num_leaves": trial.suggest_int("num_leaves", 2, 256),
-        "feature_fraction": trial.suggest_uniform("feature_fraction", 0.4, 1.0),
-        "bagging_fraction": trial.suggest_uniform("bagging_fraction", 0.4, 1.0),
-        "bagging_freq": trial.suggest_int("bagging_freq", 1, 10),
-        "min_child_samples": trial.suggest_int("min_child_samples", 5, 100),
-    }
-
-    # Create LightGBM datasets
-    train_data = lgb.Dataset(X_train, label = y_train)
-    valid_data = lgb.Dataset(X_val, label = y_val)
-
-    # Train the model
-    model = lgb.train(
-        params,
-        train_data,
-        valid_sets = [train_data, valid_data],
-        num_boost_round = 1000,
-        early_stopping_rounds = 50,
-        verbose_eval = 100
-    )
-
-    # Make predictions
-    preds = model.predict(X_val)
-    preds = np.argmax(preds, axis = 1)  # Convert probabilities to class labels
-
-    # Calculate accuracy
-    accuracy = accuracy_score(y_val, preds)
-    return accuracy
-
-
-# =====================
-# 5. Run Hyperparameter Tuning
-# =====================
-def run_optuna_tuning(X_train, y_train):
-    # Split data for validation
-    X_train_split, X_val, y_train_split, y_val = train_test_split(
-      X_train, y_train, test_size = 0.2, random_state = 42)
-
-    # Define and optimize study
-    study = optuna.create_study(direction="maximize")
-    study.optimize(
-      lambda trial: objective(
-        trial, X_train_split, X_val, y_train_split, y_val), n_trials = 100)
-
-    # Return the best parameters
-    return study.best_params
-
-
-# ===========================
-# 6. Train Final Model
-# ===========================
-def train_final_model(X_train, y_train, best_params):
-    # Create LightGBM dataset
-    train_data = lgb.Dataset(X_train, label=y_train)
-
-    # Train the final model
-    final_model = lgb.train(
-      best_params,
-      train_data,
-      num_boost_round = 1000,
-      verbose_eval = 100
-    )
-
-    return final_model
-
-
-# ========================
-# 7. Evaluate and Save Model
-# ========================
-def evaluate_and_save_model(
-  model, X_test, y_test, output_model_path = "final_model.txt"):
-    # Make predictions
-    preds = model.predict(X_test)
-    preds = np.argmax(preds, axis = 1)
-
-    # Evaluate performance
-    print("Classification Report:\n", classification_report(y_test, preds))
-
-    # Save the model
-    model.save_model(output_model_path)
-
-
-# ========================
-# 8. Main Pipeline Execution
-# ========================
-def main_pipeline():
-    # Initialize database connection
-  #  conn = duckdb.connect()
-
-    # File paths (update these to your actual file paths)
-   # test_csv = "data/test.csv"
-  #  train_csv = "data/train.csv"
-  #  actigraphy_test = "path/to/actigraphy_test.csv"
-   # actigraphy_train = "path/to/actigraphy_train.csv"
-
-    # Step 1: Load and Merge Data
-    train, test = load_and_merge_data(conn)
-
-    # Step 2: Feature Engineering
-    train = feature_engineering(train)
-    test = feature_engineering(test)
-
-    # Step 3: Prepare Features and Target
-    X_train, y_train, X_test, y_test = prepare_features_and_target(
-      train, test, target_col='sii')
-
-    # Step 4: Run Hyperparameter Tuning
-    best_params = run_optuna_tuning(X_train, y_train)
-
-    # Step 5: Train Final Model
-    final_model = train_final_model(X_train, y_train, best_params)
-
-    # Step 6: Evaluate and Save the Final Model
-    evaluate_and_save_model(final_model, X_test, y_test)
-
-
-# Run the pipeline
-if __name__ == "__main__":
-    main_pipeline()
-
-```
-
-```{python}
-import duckdb
-import numpy as np
-import pandas as pd
-import optuna
-import lightgbm as lgb
-from sklearn.model_selection import train_test_split, TimeSeriesSplit
-from sklearn.metrics import log_loss, accuracy_score
-import joblib
-import json
-from typing import Dict, Any, Tuple
-
-# Set random seeds for reproducibility
-SEED = 11
-np.random.seed(SEED)
-
-### Data Preparation Functions ###
-def load_and_merge_data(
-  conn: duckdb.DuckDBPyConnection, 
-  dataset_type: str) -> pd.DataFrame:
-    """
-    Load, aggregate, and merge data for a specified dataset type ('train' or 'test').
-    """
-    if dataset_type == 'train':
-        query = """
-        WITH TrainBase AS (
-            SELECT id,
-                   COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
-                   COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
-                   COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
-                   COALESCE(AVG(physical_height::FLOAT), 0) AS height,
-                   COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
-                   COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate,
-                   COALESCE(MAX(sii), 0) AS sii -- Target column
-            FROM TrainCsv
-            GROUP BY id
-        ),
-        TrainActivity AS (
-            SELECT id,
-                   COALESCE(AVG(light::FLOAT), 0) AS light_mean,
-                   COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
-                   COALESCE(MAX(light::FLOAT), 0) AS light_max,
-                   COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
-                   COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
-                   COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday,
-                   COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
-            FROM ActigraphyTrain
-            GROUP BY id
-        )
-        SELECT *
-        FROM TrainBase
-        LEFT JOIN TrainActivity USING (id);
-        """
-    elif dataset_type == 'test':
-        query = """
-        WITH TestBase AS (
-            SELECT id,
-                   COALESCE(AVG(basic_demos_age::FLOAT), 0) AS age,
-                   COALESCE(AVG(cgas_cgas_score::FLOAT), 0) AS cgas,
-                   COALESCE(AVG(physical_bmi::FLOAT), 0) AS bmi,
-                   COALESCE(AVG(physical_height::FLOAT), 0) AS height,
-                   COALESCE(AVG(physical_weight::FLOAT), 0) AS weight,
-                   COALESCE(AVG(physical_heartrate::FLOAT), 0) AS heartrate
-            FROM TestCsv
-            GROUP BY id
-        ),
-        TestActivity AS (
-            SELECT id,
-                   COALESCE(AVG(light::FLOAT), 0) AS light_mean,
-                   COALESCE(STDDEV(light::FLOAT), 0) AS light_std,
-                   COALESCE(MAX(light::FLOAT), 0) AS light_max,
-                   COALESCE(AVG(hour_of_day::FLOAT), 0) AS hour_mean,
-                   COALESCE(STDDEV(hour_of_day::FLOAT), 0) AS hour_std,
-                   COALESCE(MODE(weekday::TEXT::INTEGER), 0) AS common_weekday,
-                   COALESCE(MODE(quarter::TEXT::INTEGER), 0) AS common_quarter
-            FROM ActigraphyTest
-            GROUP BY id
-        )
-        SELECT *
-        FROM TestBase
-        LEFT JOIN TestActivity USING (id);
-        """
-    else:
-        raise ValueError("Invalid dataset_type. Must be 'train' or 'test'.")
-    
-    return conn.execute(query).df()
-
-
-def prepare_data(
-  conn: duckdb.DuckDBPyConnection, 
-  dataset_type: str, 
-  target_col: str = None) -> Tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
-    """
-    Prepare the data for training or testing.
-    """
-    df = load_and_merge_data(conn, dataset_type)
-    X = df.drop(columns = ['id', target_col], errors = 'ignore')
-    y = df[target_col].values if target_col and target_col in df else None
-    return df, X, y
-
-def objective(trial, X_train, X_val, y_train, y_val):
-    params = {
-        "objective": "multiclass",
-        "metric": "multi_logloss",
-        "num_class": 4,
-        "boosting_type": trial.suggest_categorical(
-          "boosting_type", ["gbdt", "dart", "goss"]),
-        "learning_rate": trial.suggest_loguniform("learning_rate", 1e-4, 0.1),
-        "num_leaves": trial.suggest_int("num_leaves", 2, 256),
-        "feature_fraction": trial.suggest_uniform("feature_fraction", 0.4, 1.0),
-        "bagging_fraction": trial.suggest_uniform("bagging_fraction", 0.4, 1.0),
-        "bagging_freq": trial.suggest_int("bagging_freq", 1, 10),
-        "min_child_samples": trial.suggest_int("min_child_samples", 5, 100),
-        }
-
-    train_data = lgb.Dataset(X_train, label = y_train)
-    valid_data = lgb.Dataset(X_val, label = y_val)
-
-    model = lgb.train(
-        params,
-        train_data,
-        valid_sets = [train_data, valid_data],
-        num_boost_round = 1000,
-        early_stopping_rounds = 50,
-        verbose_eval = 100
-    )
-
-    preds = model.predict(X_val)
-    preds = np.argmax(preds, axis = 1)
-    accuracy = accuracy_score(y_val, preds)
-
-    return accuracy
-
-
-### Training and Evaluation ###
-def train_final_model(
-  conn: duckdb.DuckDBPyConnection, 
-  target_col: str, 
-  lgb_params: Dict[str, Any]) -> lgb.Booster:
-    """
-    Train the final LightGBM model on the full training data.
-    """
-    _, X, y = prepare_data(conn, 'train', target_col)
-    train_data = lgb.Dataset(X, label = y)
-    model = lgb.train(
-      lgb_params, train_set = train_data, num_boost_round = 100)
-    return model
-
-
-def evaluate_test_data(
-  conn: duckdb.DuckDBPyConnection, 
-  model: lgb.Booster, 
-  target_col: str) -> pd.DataFrame:
-    """
-    Evaluate the model on test data.
-    """
-    df, X_test, _ = prepare_data(conn, 'test', target_col)
-    df['predictions'] = model.predict(X_test).argmax(axis = 1)
-    return df
-
-
-### Main Pipeline ###
-def main_pipeline(
-  conn: duckdb.DuckDBPyConnection, 
-  models_path: str, 
-  target_col: str = 'sii'):
-    
-    X_train, X_val, y_train, y_val = train_test_split(
-      X, y, test_size = 0.2, random_state = 42)
-
-    # Optimize hyperparameters with Optuna
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials = 100)
-
-    print("Best parameters:", study.best_params)
-    print("Best accuracy:", study.best_value)
-
-    # Best hyperparameters
-    best_params = study.best_params
-    best_params.update({
-      'objective': 'multiclass',
-      'metric': 'multi_logloss',
-      'num_class': 4,
-      'seed': SEED
-    })
-
-    print("Best hyperparameters:", best_params)
-
-    # Train the final model
-    final_model = train_final_model(conn, target_col, best_params)
-
-    # Save the model
-    final_model.save_model(f"{models_path}_model.txt")
-    with open(f"{models_path}_params.json", 'w') as f:
-        json.dump(best_params, f)
-
-    # Evaluate the test set
-    test_results = evaluate_test_data(conn, final_model, target_col)
-    print(test_results.head())
-
-
-# Example usage
-#conn = duckdb.connect()
-main_pipeline(
-  conn, 
-  models_path = "data/output/lightgbm_optuna", 
-  target_col = "sii")
-
-```
-
-```{r}
-
-#print("Cross-validation summary:", cv_summary)
-
-r_series <- py$cv_summary
-
-r_df <- data.frame(
-  avg_train_logloss = r_series$avg_train_logloss,
-  avg_val_logloss = r_series$avg_val_logloss,
-  avg_train_accuracy = r_series$avg_train_accuracy,
-  avg_val_accuracy = r_series$avg_val_accuracy
-  )
-
-"
-- high training accuracy + lower validation accuracy: overfitting
-
-- very poor performance on classification validation
-
-- decent performance on classifcation training
-"
-
-notes_list = list(
-  "Mean performance of the model on the training data.",
-  "Mean performance of the model on the validation data.",
-  "Correct classification on training data.",
-  "Correct classification on validation data."
-  )
-
-locations_list = list("avg_train_logloss"
-                      ,"avg_val_logloss"
-                      ,"avg_train_accuracy"
-                      ,"avg_val_accuracy"
-                      )
-
-# Create a table dataframe, or tibble, of footnotes
-footnotes_df <- tibble(notes = notes_list, 
-                       locations = locations_list)
-
-pal_df <- tibble(
-  cols = locations_list,
-  pals = list(eval_palette("MetBrewer::Egypt", 4, 'd', 1))
-  )
-
-rTable <- r_table_theming(r_df,
-                          title = "Cross Validation Summary",
-                          subtitle = NULL,
-                          footnotes_df,
-                          source_note = md("**source**: Kaggle"),
-                          pal_df
-                          )
-
-rTable
-```
-
-```{r}
-
-#print(test_results.head())
-
-r_df <- py$test_results.head()
-
-notes_list =  list("The disease risk category.",
-                   "12am to 6am",
-                   "6am to 12pm.",
-                   "12pm to 6pm",
-                   "6pm to 12am")
-
-locations_list = list("risk_category"
-                      ,"q1"
-                      ,"q2"
-                      ,"q3"
-                      ,"q4")
-
-# Create a table dataframe, or tibble, of footnotes
-footnotes_df <- tibble(notes = notes_list, 
-                       locations = locations_list)
-
-pal_df <- tibble(
-  cols = locations_list,
-  pals = list(eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
-  )
-
-rTable <- r_table_theming(r_df,
-                          title = "Disease Risk Categories to Lux",
-                          subtitle = NULL,
-                          footnotes_df,
-                          source_note = md("**source**: Kaggle"),
-                          pal_df
-                          )
-
-rTable
-```
-
-```{python}
-ex_df = conn.sql(f"select * from ActigraphyTrain limit 10;").df()
-ex_df
-```
-
-```{r}
-#| output: false
-
-library(ggplot2)
-library(gt)
-library(jsonlite)
-library(readr)
-
-# Load exported data
-train_data <- read_csv("data/output/train_data.csv")
-train_data <- train_data |> as.data.frame()
-
-test_results <- read_csv("data/output/test_results.csv")
-test_results <- test_results |> as.data.frame()
-
-cv_results <- fromJSON("data/output/cv_results.json")
-
-cv_summary <- fromJSON("data/output/cv_summary.json")
-
-```
-
-```{r}
-library(dplyr)
-
-# Example: Visualize age distribution in training data
-r_plot <- train_data |>
-  select(age) |>
-  group_by(age) |>
-  count(name = "count") |>
-  arrange(age) |>
-  ggplot(aes(x = age, fill = count)) +
-  geom_col(aes(y = count)) +
-  paletteer::scale_fill_paletteer_c("harrypotter::hufflepuff") +
-  labs(
-    title = "Age Distribution in Training Data", 
-    x = "Age", 
-    y = "Count")
-
-r_plot + ggplot_theming()
-```
-
-```{r}
-#| label: "fig-valtrainAccuracy"
-
-library(tidyr)
-
-cv_df <- data.frame(
-  fold = 1:length(cv_results$train_logloss),
-  train_logloss = cv_results$train_logloss,
-  val_logloss = cv_results$val_logloss,
-  train_accuracy = cv_results$train_accuracy,
-  val_accuracy = cv_results$val_accuracy
-)
-
-cv_long_accuracy <- cv_df |>
-  pivot_longer(
-    cols = c(train_accuracy, val_accuracy),
-    names_to = "type",
-    values_to = "accuracy"
-  ) |>
-  mutate(type = ifelse(type == "train_accuracy", "Train", "Validation"))
-
-r_plot <- cv_long_accuracy |>
-  ggplot(aes(x = factor(fold), y = accuracy, fill = type)) +
-  geom_col(position = position_dodge(width = 0.75)) +
-  coord_cartesian(ylim = c(0.50, 1.00)) +
-  labs(
-    title = "Accuracy Over Cross-Validation Folds",
-    x = "Fold",
-    y = "Accuracy"
-  ) +
-  scale_fill_paletteer_d(`"awtools::a_palette"`)
-
-r_plot + ggplot_theming()
-```
-
-```{r}
-#| label: "fig-valtrainLogloss"
-
-library(tidyr)
-
-cv_df <- data.frame(
-  fold = 1:length(cv_results$train_logloss),
-  train_logloss = cv_results$train_logloss,
-  val_logloss = cv_results$val_logloss,
-  train_accuracy = cv_results$train_accuracy,
-  val_accuracy = cv_results$val_accuracy
-)
-
-cv_long_logloss <- cv_df |>
-  pivot_longer(
-    cols = c(train_logloss, val_logloss),
-    names_to = "type",
-    values_to = "logLoss"
-  ) |>
-  mutate(type = ifelse(type == "train_logloss", "Train", "Validation"))
-
-r_plot <- cv_long_logloss |>
-  ggplot(aes(x = factor(fold), y = logLoss, fill = type)) +
-  geom_col(position = position_dodge(width = 0.65)) +
-  coord_cartesian(ylim = c(NA, 0.90)) +
-  labs(
-    title = "Log-Loss Over Cross-Validation Folds",
-    x = "Fold",
-    y = "Log-Loss"
-  ) +
-  scale_fill_paletteer_d(`"awtools::ppalette"`)
-
-r_plot + ggplot_theming()
-```
-
-```{python}
-
-test_results_renamed = test_results.sort_values(by = 'id')
-
-test_results_renamed = test_results_renamed.rename(columns = {"predictions":"sii"})
-
-test_results_renamed = test_results_renamed.reset_index()
-
-submission = pd.read_csv("data/sample_submission.csv")
-```
-
-```{python}
-#| label: "checkIdMatches"
-
-checkSub = submission['id'] == test_results_renamed['id']
-checkSub
-```
-
-```{r}
-#| label: tbl-ijfoiejfoij
+#| label: "infoTables"
 #| include: false
-#| eval: false
-
-r_df <- py$pydf
-
-notes_list =  list("The disease risk category.",
-                   "12am to 6am",
-                   "6am to 12pm.",
-                   "12pm to 6pm",
-                   "6pm to 12am")
-
-locations_list = list("risk_category"
-                      ,"q1"
-                      ,"q2"
-                      ,"q3"
-                      ,"q4")
-
-# Create a table dataframe, or tibble, of footnotes
-footnotes_df <- tibble(notes = notes_list, 
-                       locations = locations_list)
-
-pal_df <- tibble(
-  cols = locations_list,
-  pals = list(eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
-  )
-
-rTable <- r_table_theming(r_df,
-                          title = "Disease Risk Categories to Lux",
-                          subtitle = NULL,
-                          footnotes_df,
-                          source_note = md("**source**: Kaggle"),
-                          pal_df
-                          )
-
-rTable
-
-```
-
-```{python}
-
-submission['sii'] = test_results_renamed['sii']
-
-submission.to_csv(
-  "submission.csv", index = False)
-
-submission
-```
-
-```{r}
-#| label: "tbl-submission"
-
-r_df <- py$submission
-
-notes_list =  list("Ids from test set.",
-                   "Severity Impairment Index predicted value.")
-
-locations_list = list("id"
-                      ,"sii"
-                      )
-
-# Create a table dataframe, or tibble, of footnotes
-footnotes_df <- tibble(notes = notes_list, 
-                       locations = locations_list)
-
-pal_df <- tibble(
-  cols = locations_list,
-  pals = list(eval_palette("harrypotter::hufflepuff", 20, 'c', 1))
-  )
-
-rTable <- r_table_theming(r_df,
-                          title = "Submission - Predictions",
-                          subtitle = NULL,
-                          footnotes_df,
-                          source_note = md("**source**: Kaggle"),
-                          pal_df
-                          )
-
-rTable
-
+info_tables = conn.sql(f"Select * From main.duckdb_tables;").df()
 ```
 
 ## Close Connection
 
+:::code-fold-flex
 ```{python}
 #| label: "closeConnection"
+#| code-summary: "Releases all memory that the database was using and removes the connection."
 #| eval: true
 
 try:
@@ -2592,3 +1568,4 @@ try:
 except:
   print(f"could not close the connection")
 ```
+:::
