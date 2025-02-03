@@ -21,9 +21,6 @@ code-overflow: wrap
 lightbox: auto
 fig-responsive: true
 
-filters: 
-  - nutshell
-
 table-of-contents: true
 toc-location: left
 number-sections: true

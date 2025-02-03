@@ -1,6 +1,9 @@
 project:
   type: website
   output-dir: docs
+  render: 
+    - index.qmd
+    - "!practice/"
   
 engine: knitr
 execute:
@@ -18,17 +21,6 @@ format:
     theme:
        - darkly
        - 'scss/main.scss'
-
-#manuscript:
-#  article: index.qmd
-#  code-links: 
-#    - text: Data Import
-#      icon: file-code
-#      href: https://github.com/ericMossotti/problematicHabits
-#  notebooks: 
-#    - notebook: 'notebooks/data-modeling.qmd'
-#      title: "Data Model Schematic"
-
 
 
 
