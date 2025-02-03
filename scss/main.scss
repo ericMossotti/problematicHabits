@@ -1,10 +1,19 @@
 /*-- scss:defaults --*/
 
-// Themes/dark
+// themes/dark
 @import './themes/dark';
 
-// Themes/light
+// themes/light
 //@import './themes/light';
 
-// Components/tables
+// components/tables
 @import './components/tables';
+
+// components/code
+@import './components/code';
+
+// components/links
+@import './components/links';
+
+// layout/body
+@import './layout/body';
