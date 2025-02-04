@@ -1,6 +1,7 @@
 /*-- scss:code --*/
 
-// Selectors
+// Classes
+
 .nutshell-bubble p code:not(.sourceCode), 
 .nutshell-bubble li code:not(.sourceCode),
 p code:not(.sourceCode),
@@ -17,17 +18,14 @@ td code:not(.sourceCode) {
 }
 
 .cell details.code-fold summary {
-    color: rgba(242, 129, 7, 0.7);   // #efc776;
+    color: rgba(255, 255, 255, 0.7);
     word-wrap: normal;
     word-break: normal;
-    font-size: 15px;
-    //font: 1.0rem "Cascadia Mono SemiLight";
+    font-size: 14px;
     padding: .50rem;
-    //margin-bottom: .1rem;
     background-color: rgba(68, 68, 68, .5);
-    box-shadow: 4px 3px 7px 3px rgba(242, 129, 7, .2); //, 0px 6px 10px 0px rgba(242, 129, 7, .19);
-    border: 1px solid rgba(242, 129, 7, .9); /* Orange outline border */
-    //text-size-adjust: 50%;
+    box-shadow: 4px 3px 7px 3px  rgba(255, 255, 255, 0.25);
+    border: none; //1px solid  rgba(255, 255, 255, 1);
 }
 
 
@@ -39,7 +37,7 @@ td code:not(.sourceCode) {
   max-height: 60vh;
   max-width: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 200, .5) transparent;
+  scrollbar-color: rgba(255, 255, 255, .50) transparent;
   padding: .5rem;
   margin-bottom: .5rem;
 }
