@@ -5,6 +5,9 @@ authors:
     affiliation: None
     roles: data analysis
     corresponding: true
+
+date: today
+date-format: long
     
 abstract-title: "Objective"
 abstract: "Explore a Kaggle dataset with an in-memory, analytical SQL database. Utilize a 'best-of-both-worlds' hybrid Python and R environment."
@@ -28,24 +31,38 @@ number-sections: true
 link-external-newwindow: true
 ---
 
-## Rationale and Initial Thoughts
+## Dataset Context
 
+::: p-1
 The grounds for analyses in this case is the problematic behavior as it pertains to the subjects' experience and their parents' via questionnaires, physical fitness tests, worn instrument measurements and demographics. The resulting data is to be processed and connections drawn. [@santorelli_child_2024]
+:::
 
 ### Output Notes
 
 #### Palettes
 
-A notable and comprehsive R library was used to give the tables and plots some styling. [@hvitfeldt_paletteer_2021]
+A notable and comprehensive R library was used to give the tables and plots some styling. [@hvitfeldt_paletteer_2021]
 
 #### Tables
 
-This is a means to apply formatting to every column in a table using a desired paletteer palette if desired using the gt tables. Table output were customized to a high degree. Principles stemming from functional programming, in particular, are implemented here as they seem to be most appropriate to achieve the desired effect. [@iannone_gt_2025]
+::: p-1
+This is a means to apply formatting to every column in a table using a desired paletteer palette if desired using the gt tables. Table output were customized to a high degree. Some functional programming, in particular, are implemented here as they seem to be most appropriate to achieve the desired effect. [@iannone_gt_2025]
+
+The following R script defines two functions, *eval_palette* and *r_table_theming*, which work together to create and style a table using the *gt* package. The table is customized with colors, headers, footnotes, and other visual elements.
+
+**Features:**
+
+-   *Dynamic Palette Evaluation*: The eval_palette function is flexible and supports multiple palette types, making it reusable for different visualization needs.
+
+-   *Iterative Styling*: The use of reduce to iteratively apply styles and footnotes is a clean and efficient approach, especially for tables with many columns or complex styling requirements.
+
+-   *Customizability*: The function allows for extensive customization, including font sizes, multiline footnotes, and targeted column coloring.
+:::
 
 ::: code-fold-flex
 ```{r}
 #| label: "r_table_theming()"
-#| code-summary: "Hard-core table formatting code."
+#| code-summary: "Table formatting code."
 #| warning: false
 
 library(gt)
@@ -109,7 +126,6 @@ r_table_theming <- function(r_df,
       column_labels.padding = px(10),
       column_labels.font.weight = "bold",
       column_labels.background.color = '#333',
-      #column_labels.font.size = pct(115),
       column_labels.border.top.width = px(0),
       column_labels.border.bottom.color = 'black',
       column_labels.vlines.width = px(1),
@@ -117,7 +133,6 @@ r_table_theming <- function(r_df,
       column_labels.border.bottom.width = px(0),
       column_labels.border.lr.color = 'black',
       column_labels.vlines.color = 'black',
-      #container.width = pct(99),
       footnotes.padding = px(5),
       footnotes.background.color = '#222',
       footnotes.sep = ", ",
@@ -145,7 +160,6 @@ r_table_theming <- function(r_df,
       table_body.border.top.color = 'black',
       table_body.border.bottom.width = px(0),
       table_body.border.top.width = px(0)
-     # quarto.use_bootstrap = TRUE
       )
   
   r_table <- r_table |>
@@ -189,12 +203,12 @@ Here are some relatively simpler functions developed with the intention to appen
 ::: code-fold-flex
 ```{r}
 #| label: "ggplot_theming()"
-#| code-summary: "Soft-core plot theme code."
+#| code-summary: "Plot theming code."
 
 library(reticulate)
 library(ggplot2)
 
-# NORMAL AXES
+# normal axes
 ggplot_theming <- function() {
   theme_minimal() +
     theme(
@@ -217,11 +231,10 @@ ggplot_theming <- function() {
       legend.title = element_text(color = 'white'))
   }
 
-# FLIPPED AXES
+# flipped axes
 ggplot_theming_flipped_axes <- function() {
   theme_minimal() +
     theme(
-     # borders(color = "#222"),
       plot.title = element_text(color = 'white',
                                 size = rel(2)),
       plot.background = element_rect(fill = '#222'),
@@ -242,7 +255,7 @@ ggplot_theming_flipped_axes <- function() {
 
 ## Import/Extract
 
-The data was imported from Kaggle. It only needed to be done once, so the code chunk's eval setting is set to false during most of this project's development. 
+The data was imported from Kaggle. It only needed to be done once, so the code chunk's eval setting is set to false during most of this project's development.
 
 ::: code-fold-flex
 ```{python}
@@ -253,7 +266,7 @@ The data was imported from Kaggle. It only needed to be done once, so the code c
 ```
 :::
 
-Although not necessary, creating the data directory can be made programmatic. 
+Although not necessary, creating the data directory can be made programmatic.
 
 ::: code-fold-flex
 ```{python}
@@ -269,8 +282,8 @@ except FileExistsError:
 ```
 :::
 
-:::p-1
-Exracting the downloaded files was also done programmatically, but it is not necessary. It did seem useful to visualize the data directory following extraction to verify the files and folders that now exist in the ./data directory of this project.
+::: p-1
+Extracting the downloaded files was also done programmatically, but it is not necessary. It did seem useful to visualize the data directory following extraction to verify the files and folders that now exist in the ./data directory of this project.
 :::
 
 ::: code-fold-flex
@@ -339,7 +352,7 @@ rTable
 
 ## Establish Connection
 
-:::p-1
+::: p-1
 An in-memory, DuckDB database connection was established for this project. The analysis in this project heavily relies on SQL syntax, and most of the computations are performed in database for efficiency.
 :::
 
@@ -383,7 +396,7 @@ except:
 
 ### Create New Data Types
 
-:::p-1
+::: p-1
 Enum data types significantly sped up many database operations. Enums are similar to the category data type in Python, and the factor datatype in R. [@holanda_duckdb_2021]
 :::
 
@@ -464,7 +477,7 @@ else:
 ```
 :::
 
-:::p-1
+::: p-1
 This is designed to manage ENUM types in a DuckDB database in a modular and user-friendly way. It provides functions to create and drop ENUM types, and it uses Python data structures like pandas Series and dictionaries to handle inputs and outputs.
 
 It is part of the data preprocessing and database setup pipeline in this project. It ensures that the database schema (specifically ENUM types) is properly configured before performing further operations, such as aggregating light exposure data.
@@ -496,7 +509,6 @@ def try_drop(conn, type_str: str) -> pd.Series:
   :::HOW(s):::
     Utilize python data structures such as pandas Series and dictionary as parameters.
   """
-  # the try, except can help categorize the outputs for ui/ux
   try:
     conn.execute(f"DROP TYPE {type_str};")
     return pd.Series(type_str, index = ['dropped'])
@@ -576,7 +588,7 @@ rTable
 ### Initial Extraction Transformation and Load Pipeline
 
 ::: p-1
-Transformations are applied while reading in data from files to minimize steps needed. Not sure why the data had hyphens in the columns names, originally. These hyphens interfere with SQL database queries, so it might be useful to replace them with underscore characters. There is no need to overwrite the original CSV's to maintain a clear trail of data trasformations.
+Transformations are applied while reading in data from files to minimize steps needed. Not sure why the data had hyphens in the columns names, originally. These hyphens interfere with SQL database queries, so it might be useful to replace them with underscore characters. There is no need to overwrite the original CSV's to maintain a clear trail of data transformations.
 :::
 
 ::: code-fold-flex
@@ -710,7 +722,6 @@ locations_list = list("id",
                       "hour_of_day",
                       "relative_date_PCIAT")
 
-# Create a table data-frame, or tibble, of footnotes
 footnotes_df <- tibble(
   notes = notes_list, 
   locations = locations_list)
@@ -742,8 +753,8 @@ rTable
 
 ## EDA
 
-:::p-1
-This is designed to filter and create new database tables based on regular expression (regex) patterns applied to column names. It is part of a data preprocessing pipeline. The code modularizes the process of selecting columns and creating new tables, making it reusable and efficient.
+::: p-1
+This is designed to filter and create new database tables based on regular expression (regexp) patterns applied to column names. It is part of the data preprocessing pipeline. The code modularizes the process of selecting columns and creating new tables, making it reusable and efficient.
 :::
 
 ::: code-fold-flex
@@ -835,7 +846,6 @@ regex_dict_test = {
   ,"FgChildTest": r"^id|^fgc\S+"
   ,"BiaTest": r"^id|^bia\S+"
   ,"PaqaTest": r"^id|^paq_a\S+"
- # ,"Pciat_OfTest": r"^id|^pciat\S+" 
   ,"SdsTest": r"^id|^sds\S+"
   ,"InternetUseTest": r"^id|^preint\S+"
   }
@@ -948,7 +958,7 @@ It might be useful to explore how the time of day and associated exposure to lig
 
 #### Informal Hypothesis
 
-:::p-1
+::: p-1
 *Hypothesis*: More time spent indoors on the internet might be associated with lower light exposure during daytime (Q1-Q2, Q2-Q3) and higher light exposure during nighttime (min-Q1, Q3-max).
 
 The BMI risk categories found at, [@zierle_physiology_2024], have been borrowed for this project. The SQL query syntax, therefore, aims to reflect a structure of evidence-based classification. Though not used in this project, it might be useful to classify lux statistics in a way that reflect a classification standard [@actigraphcorp_lux_2024].
@@ -956,8 +966,8 @@ The BMI risk categories found at, [@zierle_physiology_2024], have been borrowed 
 
 #### Lux by Hour of Day Quartile
 
-:::p-1
-Repetitive sql commands are quite verbose and repetitive, at times. Python functions, alongside data structures, such as dataframes, and dictionaries could actually help make running SQL commands less repetitive and more modular. 
+::: p-1
+Repetitive SQL commands are quite verbose and repetitive, at times. Python functions, alongside data structures, such as dataframes, and dictionaries could actually help make running SQL commands less repetitive and more modular.
 
 The code is designed to process and aggregate light exposure data from actigraphy datasets (likely from wearable devices) using DuckDB as an in-memory database. The code is modularized into several functions to handle different tasks, such as calculating quartiles, detecting specific columns, creating intermediate tables, and joining these tables into a final aggregated result.
 
@@ -968,7 +978,6 @@ Additionally, the code is useful for analyzing light exposure data over differen
 ```{python}
 #| label: "intermediateLighter"
 #| code-summary: "Extract actigraphy data based on the time of day quartile."
-
 
 def quartiler(
   conn: duckdb.duckdb, 
@@ -1162,7 +1171,6 @@ locations_list = list(
   ,'q2_q3'
   ,'q3_max')
 
-# Create a table data-frame, or tibble, of footnotes
 footnotes_df <- tibble(notes = notes_list, 
                        locations = locations_list)
 
@@ -1182,7 +1190,7 @@ rTable <- r_table_theming(r_df,
 ```
 :::
 
-:::p-1
+::: p-1
 @tbl-AggregatedLights, returns the averages of light exposure, grouped by individual participants across the 4 6-hour time-frames of the day.
 :::
 
@@ -1221,7 +1229,7 @@ for from_tbl, join_tbl in lightsDict.items():
 ```
 :::
 
-:::p-1
+::: p-1
 Checking the internet use hours parameter to get an overview along with null percentage to see if we might be able to use it, as-is, for joining with the corresponding lux quartile.
 :::
 
@@ -1248,7 +1256,7 @@ pyDescribe, duckSummary
 
 #### Sii, Lux, and Internet Use
 
-:::p-1
+::: p-1
 @tbl-useToSii, is returning some descriptive statistics, such as count and mean, across the behavioral index, and mean lux by quartile, grouped by internet use hours.
 :::
 
@@ -1270,8 +1278,6 @@ FROM
   AggregatedLights al
 GROUP BY 
   useHrs;""").df()
-
-#obsSum = pydf.observations.sum()
 
 pydf = pydf.dropna()
 ```
@@ -1326,7 +1332,6 @@ rTable <- r_table_theming(r_df,
 ```
 :::
 
-
 ::: table-flex
 ```{r}
 #| label: "tbl-useToSii"
@@ -1364,11 +1369,10 @@ r_plot <- r_plot + ggplot_theming()
 r_plot
 ```
 
-
 #### Disease Risk Categories
 
-:::p-1
-Something that people might not see everyday is SQL sytnax used within a Python environment. The performance of the sql database, in this case, duckdb, likely outperforms pandas, polars, and such. My aim in this project is to demonstrate some competence with sql, but also approach practical use-case scenarios.
+::: p-1
+Something perhaps not seen everyday is SQL syntax in a Python environment. The performance of the SQL database, in this case, DuckDB, likely outperforms Pandas and Polars. An aim for this project was also to demonstrate some competence with SQL, but also approach practical use-case scenarios.
 :::
 
 ::: code-fold-flex
@@ -1459,8 +1463,8 @@ SELECT * EXCLUDE(risk_cat) FROM Risk4;
 ```
 :::
 
-:::p-1
-It might be useful to see what some descriptive statistics might look when grouped by risk categories. 
+::: p-1
+It might be useful to explore statistics when grouped by risk categories.
 :::
 
 ::: code-fold-flex
@@ -1488,7 +1492,6 @@ pydf = conn.sql("""
 SELECT * 
 FROM RiskCategorySummary;
 """).df()
-
 ```
 :::
 
@@ -1515,7 +1518,6 @@ locations_list = list("risk_category"
                       ,"q3"
                       ,"q4")
 
-# Create a table dataframe, or tibble, of footnotes
 footnotes_df <- tibble(notes = notes_list, 
                        locations = locations_list)
 
@@ -1530,13 +1532,12 @@ rTable <- r_table_theming(r_df,
                           footnotes_df,
                           source_note = md("**source**: Kaggle"),
                           pal_df,
-                          multiline_feet = FALSE,
-                          
+                          multiline_feet = FALSE
                           )
 ```
 :::
 
-:::p-1
+::: p-1
 @tbl-diseaseRiskLux shows the grouped-averages of the problematic behavior index, internet use hours, and mean lux across the time of day quartiles by disease risk category of participants.
 :::
 
@@ -1571,7 +1572,7 @@ data_long <- r_df |>
 ```
 :::
 
-:::code-fold-flex
+::: code-fold-flex
 ```{r}
 #| label: "longerDiseaseCat"
 #| code-summary: "table setup"
@@ -1583,14 +1584,12 @@ notes_list =  list("Disease risk based on BMI, waist circumference, and sex.",
                    "Quartile of day.",
                    "Average light exposure.")
 
-# Create a table dataframe, or tibble, of footnotes
 footnotes_df <- tibble(notes = notes_list, locations = locations_list)
 
 pal_df <- tibble(
   cols = locations_list,
   pals = list(eval_palette("harrypotter::ravenclaw", 7, 'c', 1)))
 
-#tbl_font_size = pct(80))
 rTable <- r_table_theming(data_long,
                           title = "Disease Risk Categories to Lux",
                           subtitle = "Pivoted Longer",
@@ -1603,11 +1602,11 @@ rTable <- r_table_theming(data_long,
 ```
 :::
 
-:::p-1
+::: p-1
 @tbl-longerDiseaseCat is a pivoted version of the previous table, @tbl-diseaseRiskLux.
 :::
 
-:::table-flex
+::: table-flex
 ```{r}
 #| label: "tbl-longerDiseaseCat"
 #| echo: false
@@ -1627,17 +1626,16 @@ r_plot <- ggplot(data = data_long,
                      color = risk_category)) +
   geom_line(linewidth = 1) +
   geom_point(size = 3) +
-  labs(title = "Is Disease risk related to light exposure\n during certain times of the day?",
+  labs(title = "Does disease risk relate to light exposure\n by certain times of the day?",
        x = "Time Period",
        y = "Mean Lux Value",
        color = "Risk Category")
 
 r_plot <- r_plot + ggplot_theming()
-
 ```
 :::
 
-@fig-luxRiskCat was an attempt at visualizing the relationship, if any, by mean lux exposure across participants, time of day quartile, and disease risk. Disease risk was based on BMI, waist-circumference, and sex data. 
+@fig-luxRiskCat was an attempt at visualizing the relationship, if any, by mean lux exposure across participants, time of day quartile, and disease risk. Disease risk was based on BMI, waist-circumference, and sex data.
 
 ```{r}
 #| label: "fig-luxRiskCat"
@@ -1649,7 +1647,7 @@ r_plot
 ## Summary Profiles
 
 ::: p-1
-In the future, we might want to explore further, but for now we can save these descriptive statistics tables to files.
+In the future, this data could be further explored. For now, the descriptive statistics can be saved to files for quickly restarting and diving deeper.
 :::
 
 ::: code-fold-flex
@@ -1694,7 +1692,7 @@ info_tables = conn.sql(f"Select * From main.duckdb_tables;").df()
 
 ## Close Connection
 
-At the end of the analysis, we can safely close the in-memory database from RAM. The author of this analysis had 32GB of DDR4 RAM, originally with a set limit of 24GB used by the database.
+The in-memory database connection can be closed.
 
 ::: code-fold-flex
 ```{python}
@@ -1712,13 +1710,13 @@ except:
 
 ## Closing Thoughts
 
-:::p-1
-The purpose of the article was to explore a Kaggle dataset and improve workflow methodologies and output. It can be expanded to be more insightful for this particular domain, but that was not the goal. The objective has been achieved, as better outputting functions have been developed alongside improved CSS styling. 
+::: p-1
+The purpose of the article was to explore an active Kaggle competition dataset and improve workflow methodologies and output. This analysis can be expanded to be more insightful for this particular domain. The objective has been achieved as much was learned and improved functions have been developed alongside improved CSS styling.
 
-This particular dataset contained a lot of missing data, despite having come from large dataset. Due to this incomplete data across many of the columns,some of the data transformations resulted in as low as ~50 observations from the original ~1000. The leaderboard that came along with this dataset from a past competition suggests that the model accuracy tops out only around 0.48, [@tbl-leaderboard]. I believe, while some patterns could be gleaned, the predictive power of any modeling attempts might as well have been doomed.
+This particular dataset contained a lot of missing data despite being quite large. Due to this incomplete data across many of the columns, some of the data transformations resulted in as low as \~50 observations from the original \~1000. The leaderboard that came along with this dataset from a past competition suggests that the model accuracy tops out only around 0.48, [@tbl-leaderboard]. While some patterns could be gleaned, the predictive power of any modeling attempts might as well have been doomed.
 :::
 
-:::code-fold-flex
+::: code-fold-flex
 ```{python}
 #| label: "leaderboardRead"
 #| code-summary: "Reads a recently downloaded the private leaderboard csv (from the competition website's Leaderboard tab) to a dataframe."
@@ -1730,7 +1728,7 @@ py_df = leaderboard_df.head(n = 10)
 ```
 :::
 
-:::code-fold-flex
+::: code-fold-flex
 ```{r}
 #| label: "leaderboardSetup"
 #| code-summary: "table setup"
@@ -1754,7 +1752,6 @@ locations_list = list(
   "SubmissionCount", 
   "TeamMemberUserNames")
 
-# Create a table dataframe, or tibble, of footnotes
 footnotes_df <- tibble(notes = notes_list, 
                        locations = locations_list)
 
@@ -1784,4 +1781,3 @@ rTable <- r_table_theming(r_df,
 rTable
 ```
 :::
-
